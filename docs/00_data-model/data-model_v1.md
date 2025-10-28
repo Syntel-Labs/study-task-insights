@@ -185,9 +185,9 @@ Esta tabla registra **sesiones de estudio reales**, incluyendo inicio, fin y dur
 | `notes`            | `TEXT`                                                                                       |  ❌  | Observaciones opcionales de la sesión.    |
 | `created_at`       | `TIMESTAMP TZ DEFAULT now()`                                                                 |  ✅  | Fecha de creación del registro.           |
 
-### 2.4 `weekly_productivity` — **Métricas semanales de productividad**
+### 2.4 `weekly_productivity` — **Materialized view de métricas semanales**
 
-Esta tabla almacena **resúmenes semanales de desempeño académico**, calculados a partir de `tasks` y `study_sessions`. Permite generar reportes y responder consultas del tipo: “¿cómo rendí en el primer semestre?”. Cada registro corresponde a una **semana ISO de un año**, consolidando tareas creadas, completadas, tiempo estimado y tiempo real invertido.
+Esta **materialized view** consolida automáticamente resúmenes semanales de desempeño académico a partir de `tasks` y `study_sessions`. Permite generar reportes y responder consultas del tipo: “¿cómo rendí en el primer semestre?”. Cada registro corresponde a una **semana ISO de un año**, consolidando tareas creadas, completadas, tiempo estimado y tiempo real invertido.
 
 **Columnas principales y finalidad:**
 
