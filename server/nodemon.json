@@ -2,6 +2,6 @@
   "watch": ["src/**/*", "config/**/*", "prisma/**/*", "app.js", "server.js"],
   "ext": "js,json",
   "ignore": ["node_modules", "logs/*", "generated/**/*"],
-  "exec": "node server.js",
+  "exec": "node src/server.js",
   "legacyWatch": true
 }
