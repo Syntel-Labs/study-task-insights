@@ -9,7 +9,7 @@
 
 ## 2️⃣ Documentación inicial
 
-* [ ] Llenar **About** del repositorio: descripción, stack, objetivos, badges.
+* [x] Llenar **About** del repositorio: descripción, stack, objetivos, badges.
 * [ ] Crear **Topics** en GitHub: tags que describan stack y funcionalidades.
 * [ ] Crear **Wiki** de GitHub:
 
