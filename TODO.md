@@ -23,9 +23,9 @@
 
 ## 3️⃣ Modelado de datos y ORM
 
-* [ ] Diseñar **modelo de datos**: tablas, relaciones, ERD.
+* [x] Diseñar **modelo de datos**: tablas, relaciones, ERD.
 * [ ] Implementar **Prisma / ORM** con el esquema diseñado.
-* [ ] Crear migraciones iniciales para la base de datos.
+* [x] Crear migraciones iniciales para la base de datos.
 
 ## 4️⃣ Backend
 
