@@ -24,12 +24,12 @@
 ## 3️⃣ Modelado de datos y ORM
 
 * [x] Diseñar **modelo de datos**: tablas, relaciones, ERD.
-* [ ] Implementar **Prisma / ORM** con el esquema diseñado.
+* [x] Implementar **Prisma / ORM** con el esquema diseñado.
 * [x] Crear migraciones iniciales para la base de datos.
 
 ## 4️⃣ Backend
 
-* [ ] Definir **estructura de carpetas y módulos**: controllers, routes, services, middlewares.
+* [x] Definir **estructura de carpetas y módulos**: controllers, routes, services, middlewares.
 * [ ] Implementar **CRUD básico** de tareas (sin usuarios por ahora).
 * [ ] Integrar **base de datos** con ORM.
 * [ ] Añadir **logs y manejo de errores** básicos.

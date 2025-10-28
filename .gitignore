@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 
 # markdownlint
 .markdownlint.json
+
+# prisma
+generated/
