@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TermStatus {
+  active
+  inactive
+
+  @@map("term_status")
+}
+
+// CATÁLOGOS
+model Term {
+  termId    Int        @id @default(autoincrement()) @map("term_id") @db.SmallInt
+  name      String     @unique @db.VarChar(80)
+  startDate DateTime   @map("start_date") @db.Date
+  endDate   DateTime   @map("end_date") @db.Date
+  status    TermStatus @default(active)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tasks Task[]
+
+  @@map("terms")
+}
+
+model TaskStatus {
+  taskStatusId Int      @id @default(autoincrement()) @map("task_status_id") @db.SmallInt
+  code         String   @unique @db.VarChar(40)
+  description  String?  @db.VarChar(160)
+  isFinal      Boolean  @default(false) @map("is_final")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tasks Task[]
+
+  @@map("task_statuses")
+}
+
+model TaskPriority {
+  taskPriorityId Int      @id @default(autoincrement()) @map("task_priority_id") @db.SmallInt
+  code           String   @unique @db.VarChar(30)
+  weight         Int      @default(0) @db.SmallInt
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tasks Task[]
+
+  @@map("task_priorities")
+}
+
+model TaskType {
+  taskTypeId  Int      @id @default(autoincrement()) @map("task_type_id") @db.SmallInt
+  code        String   @unique @db.VarChar(40)
+  description String?  @db.VarChar(160)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tasks Task[]
+
+  @@map("task_types")
+}
+
+model TaskTag {
+  taskTagId String   @id @default(uuid()) @map("task_tag_id") @db.Uuid
+  name      String   @unique @db.VarChar(50)
+  color     String?  @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  assignments TaskTagAssignment[]
+
+  @@map("task_tags")
+}
+
+// PRINCIPALES 
+model Task {
+  taskId         String    @id @default(uuid()) @map("task_id") @db.Uuid
+  termId         Int?      @map("term_id") @db.SmallInt
+  taskStatusId   Int       @map("task_status_id") @db.SmallInt
+  taskPriorityId Int       @map("task_priority_id") @db.SmallInt
+  taskTypeId     Int       @map("task_type_id") @db.SmallInt
+  title          String    @db.VarChar(160)
+  description    String?
+  dueAt          DateTime? @map("due_at") @db.Timestamptz(6)
+  estimatedMin   Int?      @map("estimated_minutes")
+  actualMin      Int?      @map("actual_minutes")
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  term           Term?               @relation(fields: [termId], references: [termId])
+  status         TaskStatus          @relation(fields: [taskStatusId], references: [taskStatusId])
+  priority       TaskPriority        @relation(fields: [taskPriorityId], references: [taskPriorityId])
+  type           TaskType            @relation(fields: [taskTypeId], references: [taskTypeId])
+  sessions       StudySession[]
+  tagAssignments TaskTagAssignment[]
+
+  @@index([taskStatusId], name: "idx_tasks_status")
+  @@index([taskPriorityId], name: "idx_tasks_priority")
+  @@index([dueAt], name: "idx_tasks_due_at")
+  @@index([termId, dueAt], name: "idx_tasks_term_due")
+  @@map("tasks")
+}
+
+model TaskTagAssignment {
+  taskTagAssignmentId String   @id @default(uuid()) @map("task_tag_assignment_id") @db.Uuid
+  taskId              String   @map("task_id") @db.Uuid
+  taskTagId           String   @map("task_tag_id") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  task Task    @relation(fields: [taskId], references: [taskId])
+  tag  TaskTag @relation(fields: [taskTagId], references: [taskTagId])
+
+  @@unique([taskId, taskTagId], name: "uq_task_tag")
+  @@index([taskId], name: "idx_task_tag_assign_task")
+  @@index([taskTagId], name: "idx_task_tag_assign_tag")
+  @@map("task_tag_assignments")
+}
+
+model StudySession {
+  studySessionId  String   @id @default(uuid()) @map("study_session_id") @db.Uuid
+  taskId          String   @map("task_id") @db.Uuid
+  startedAt       DateTime @map("started_at") @db.Timestamptz(6)
+  endedAt         DateTime @map("ended_at") @db.Timestamptz(6)
+  durationMinutes Int      @map("duration_minutes")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  task Task @relation(fields: [taskId], references: [taskId])
+
+  @@index([taskId, startedAt], name: "idx_study_sessions_task_started")
+  @@map("study_sessions")
+}
