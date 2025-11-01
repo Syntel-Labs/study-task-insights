@@ -10,7 +10,7 @@ El módulo `prismaClient.js` instancia el cliente ORM **Prisma**, encargado de l
 - Crea una instancia única de `PrismaClient`.  
 - Exporta el objeto `prisma` para ser usado globalmente en servicios y controladores.
 
-## Diagrama de flujo (Mermaid)
+## Diagrama de flujo
 
 ```mermaid
 flowchart TD

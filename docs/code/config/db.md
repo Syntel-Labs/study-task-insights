@@ -14,16 +14,16 @@ Se usa principalmente para operaciones fuera del ORM Prisma, como scripts, valid
   - `pool` → instancia reutilizable de conexión a PostgreSQL.
   - `connectDB()` → verificación inicial o manual de conexión.
 
-## Diagrama de flujo (Mermaid)
+## Diagrama de flujo
 
 ```mermaid
 flowchart TD
-    A[dotenv.config#40;#41;] --> B[Lee variables de entorno]
+    A[dotenv.config] --> B[Lee variables de entorno]
     B --> C[Inicializa Pool de pg]
     C --> D{NODE_ENV=production?}
     D -- Sí --> E[Usa SSL con rejectUnauthorized=false]
     D -- No --> F[Conexión sin SSL]
-    F --> G[connectDB ejecuta SELECT NOW#40;#41;]
+    F --> G[connectDB ejecuta SELECT NOW]
     E --> G
     G --> H[Conexión verificada o error]
 ```

@@ -13,7 +13,7 @@ Agrega un identificador único `requestId` a cada petición para trazabilidad.
   - `logger`: instancia de Winston configurada.
   - `requestLogger`: middleware Express para seguimiento de peticiones.
 
-## Diagrama de flujo (Mermaid)
+## Diagrama de flujo
 
 ```mermaid
 sequenceDiagram

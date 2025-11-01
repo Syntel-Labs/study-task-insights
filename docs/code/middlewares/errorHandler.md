@@ -20,7 +20,7 @@ Centraliza la captura, registro y respuesta JSON para todos los errores no contr
 
 - Si el error tiene `statusCode`, usa ese valor. De lo contrario, responde `500`.
 
-## Diagrama de flujo (Mermaid)
+## Diagrama de flujo
 
 ```mermaid
 flowchart TD

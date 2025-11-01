@@ -13,7 +13,7 @@ Permite habilitar o deshabilitar el control según la variable de entorno `ACCES
   - O header `x-access-token` con el mismo valor del token compartido.
 - Excluye rutas públicas `/healthz`, `/gate/login` y `/gate/logout`.
 
-## Diagrama de flujo (Mermaid)
+## Diagrama de flujo
 
 ```mermaid
 flowchart TD
