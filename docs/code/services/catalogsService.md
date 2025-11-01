@@ -3,12 +3,12 @@
 ## Introducción
 
 El servicio `catalogsService.js` implementa la lógica de acceso a datos para todos los **catálogos del sistema** (`terms`, `task-statuses`, `task-priorities`, `task-types`, `task-tags`).  
-Centraliza las operaciones CRUD utilizando **Prisma ORM**, asegurando consistencia, validaciones y manejo controlado de errores. :contentReference[oaicite:0]{index=0}
+Centraliza las operaciones CRUD utilizando **Prisma ORM**, asegurando consistencia, validaciones y manejo controlado de errores.
 
 ## Descripción general
 
 Este módulo abstrae completamente la interacción con la base de datos.  
-El controlador (`catalogsController.js`) solo delega la operación al método correspondiente de este servicio. :contentReference[oaicite:1]{index=1}
+El controlador (`catalogsController.js`) solo delega la operación al método correspondiente de este servicio.
 
 Cada catálogo está definido en un mapa `ENTITY_MAP`, que indica:
 
