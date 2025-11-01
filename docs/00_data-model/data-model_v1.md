@@ -137,11 +137,20 @@ Contiene los **ítems del checklist académico** que el usuario principal contro
 | `description`       | `TEXT`                                            |  ❌  | Detalles adicionales de la tarea.                                          |
 | `due_at`            | `TIMESTAMP TZ`                                    |  ❌  | Fecha límite de entrega o realización.                                     |
 | `estimated_minutes` | `INTEGER CHECK (estimated_minutes >= 0)`          |  ❌  | Tiempo estimado para completar la tarea.                                   |
-| `actual_minutes`    | `INTEGER CHECK (actual_minutes >= 0)`             |  ❌  | Tiempo real invertido en la tarea (puede derivarse de sesiones).           |
+| `actual_minutes`    | `INTEGER CHECK (actual_minutes >= 0)`             |  ❌  | Tiempo real invertido (derivado de `study_sessions`).                      |
 | `completed_at`      | `TIMESTAMP TZ`                                    |  ❌  | Fecha en que la tarea fue completada.                                      |
 | `archived_at`       | `TIMESTAMP TZ`                                    |  ❌  | Fecha de archivado lógico, si corresponde.                                 |
 | `created_at`        | `TIMESTAMP TZ DEFAULT now()`                      |  ✅  | Fecha de creación del registro.                                            |
 | `updated_at`        | `TIMESTAMP TZ DEFAULT now()`                      |  ✅  | Fecha de última actualización del registro.                                |
+
+**Restricciones y unicidad:**
+
+Para garantizar integridad y evitar duplicados activos, se aplican **índices únicos parciales**:
+
+- `(term_id, lower(btrim(title)), due_at)` cuando `archived_at IS NULL AND due_at IS NOT NULL`
+- `(term_id, lower(btrim(title)))` cuando `archived_at IS NULL AND due_at IS NULL`
+
+Esto permite repetir tareas idénticas en el histórico (archivadas), pero **impide duplicados activos** dentro del mismo periodo académico.
 
 ### 2.2 `task_tag_assignments` — **Relación Tarea–Etiqueta (N:M)**
 
@@ -211,49 +220,61 @@ Esta **materialized view** consolida automáticamente resúmenes semanales de de
 
 ## 3. Índices
 
-> **Objetivo**: acelerar filtros típicos del checklist, calendarios y agregaciones, y garantizar unicidad donde corresponde.
+> **Objetivo:** acelerar filtros típicos del checklist, calendarios y agregaciones, además de garantizar unicidad donde corresponde.
 
 - **`tasks(task_status_id)`**
   
-  **Por qué**: vistas del checklist por estado son frecuentes (pendientes, en progreso, completadas).
+  **Por qué:** vistas del checklist por estado son frecuentes (pendientes, en progreso, completadas).
   
-  **Beneficio**: filtra rápido por estado actual sin escanear toda la tabla.
+  **Beneficio:** filtra rápido por estado actual sin escanear toda la tabla.
 
 - **`tasks(task_priority_id)`**
   
-  **Por qué**: ordenar/filtrar por prioridad para decidir foco del día.
+  **Por qué:** ordenar/filtrar por prioridad para decidir foco del día.
   
-  **Beneficio**: permite “top tareas urgentes” eficiente.
+  **Beneficio:** permite “top tareas urgentes” eficiente.
 
 - **`tasks(due_at)`**
   
-  **Por qué**: calendarios y recordatorios se basan en deadlines.
+  **Por qué:** calendarios y recordatorios se basan en deadlines.
   
-  **Beneficio**: rangos por fecha (semana/mes) más rápidos.
+  **Beneficio:** rangos por fecha (semana/mes) más rápidos.
 
 - **`tasks(term_id, due_at)`**
   
-  **Por qué**: consultas históricas por **semestre** y ventana temporal (ej. “S1 2025, próximos vencimientos”).
+  **Por qué:** consultas históricas por **semestre** y ventana temporal (ej. “S1 2025, próximos vencimientos”).
   
-  **Beneficio**: combinación de filtro por término + orden cronológico.
+  **Beneficio:** combinación de filtro por término + orden cronológico.
+
+- **`tasks(term_id, lower(btrim(title)), due_at)` (UNIQUE parcial)**
+  
+  **Por qué:** evita duplicados activos con fecha definida.
+  
+  **Beneficio:** garantiza integridad sin bloquear históricos archivados.
+
+- **`tasks(term_id, lower(btrim(title)))` (UNIQUE parcial)**
+  
+  **Por qué:** evita duplicados activos sin fecha límite (`due_at` nulo).
+  
+  **Beneficio:** asegura consistencia también en tareas sin deadline.
 
 - **`task_tag_assignments(task_id, task_tag_id)` (UNIQUE)**
   
-  **Por qué**: evitar duplicar etiquetas en una tarea y acelerar búsquedas por combinación.
+  **Por qué:** evitar duplicar etiquetas en una tarea y acelerar búsquedas por combinación.
   
-  **Beneficio**: integridad y joins N:M más eficientes.
+  **Beneficio:** integridad y joins N:M más eficientes.
 
 - **`study_sessions(task_id, started_at)`**
   
-  **Por qué**: obtener el historial de tiempo por tarea en orden temporal.
+  **Por qué:** obtener el historial de tiempo por tarea en orden temporal.
   
-  **Beneficio**: cargas para gráficos/series de tiempo sin “filesort”.
+  **Beneficio:** cargas para gráficos/series de tiempo sin “filesort”.
 
 - **`weekly_productivity(iso_year, iso_week)` (UNIQUE)**
   
-  **Por qué**: acceso directo a la semana solicitada y garantía de un registro por semana.
+  **Por qué:** acceso directo a la semana solicitada y garantía de un registro por semana.
   
-  **Beneficio**: reportes semanales y agregaciones consistentes.
+  **Beneficio:** reportes semanales y agregaciones consistentes.
 
 ## 4. Diseño
 
@@ -282,3 +303,8 @@ Esta **materialized view** consolida automáticamente resúmenes semanales de de
 - `name`/`code`: 30–80 caracteres → cortos, legibles y eficientes.
 - `description`: hasta 160 → útil para notas o tooltips.
 - `color`: hasta 20 → suficiente para valores hex o nombres cortos.
+
+### 5. Derivación de minutos reales (`actual_minutes`)
+
+- `actual_minutes` **no se actualiza directamente** desde el cliente.
+- Se **deriva automáticamente** sumando los `duration_minutes` de `study_sessions` asociadas.

@@ -149,6 +149,14 @@ CREATE INDEX idx_tasks_status        ON tasks (task_status_id);
 CREATE INDEX idx_tasks_priority      ON tasks (task_priority_id);
 CREATE INDEX idx_tasks_due_at        ON tasks (due_at);
 CREATE INDEX idx_tasks_term_due      ON tasks (term_id, due_at);
+CREATE UNIQUE INDEX ux_tasks_active_term_title_due
+  ON tasks (term_id, lower(btrim(title)), due_at)
+  WHERE archived_at IS NULL
+    AND due_at IS NOT NULL;
+CREATE UNIQUE INDEX ux_tasks_active_term_title_nodue
+  ON tasks (term_id, lower(btrim(title)))
+  WHERE archived_at IS NULL
+    AND due_at IS NULL;
 
 -- task_tag_assignments
 CREATE INDEX idx_task_tag_assign_task  ON task_tag_assignments (task_id);
