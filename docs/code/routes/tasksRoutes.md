@@ -2,53 +2,69 @@
 
 ## Introducción
 
-Define el router de **tasks** y lo asocia con el controlador. Expone un CRUD RESTful con filtros, paginación y proyección opcional.
+Define los endpoints REST para la entidad **`tasks`**, núcleo del sistema Study Task Insights.  
+Cada ruta está asociada a su controlador (`tasksController.js`) y se registra bajo `/api/tasks`.
 
-## Rutas
+## Endpoints definidos
 
-| Método | Ruta            | Controlador        |
-|-------:|-----------------|--------------------|
-| GET    | /api/tasks      | `getList`          |
-| GET    | /api/tasks/:id  | `getOne`           |
-| POST   | /api/tasks      | `createMany`       |
-| PUT    | /api/tasks      | `updateManyCtrl`   |
-| DELETE | /api/tasks      | `deleteManyCtrl`   |
+| Método   | Ruta              | Descripción                                                  | Controlador      |
+| -------- | ----------------- | ------------------------------------------------------------ | ---------------- |
+| `GET`    | `/api/tasks`      | Lista tareas filtradas y paginadas.                         | `getList`        |
+| `GET`    | `/api/tasks/:id`  | Obtiene una tarea específica por ID.                         | `getOne`         |
+| `POST`   | `/api/tasks`      | Crea una o varias tareas nuevas.                            | `createMany`     |
+| `PUT`    | `/api/tasks`      | Actualiza una o varias tareas existentes.                    | `updateManyCtrl` |
+| `DELETE` | `/api/tasks`      | Elimina varias tareas según `body.ids`.                      | `deleteManyCtrl` |
 
-## Filtros y proyección
+## Parámetros de consulta (GET /api/tasks)
 
-- **Filtros:** `q`, `statusId`, `priorityId`, `typeId`, `termId`, `tagId`, `dueFrom`, `dueTo`, `archived` (por defecto `false`: solo activas).
-- **Include:**  
-  - `include=lookups` → añade catálogos (`status`, `priority`, `type`, `term`)  
-  - `include=tags` → añade etiquetas (`taskTagAssignments.taskTag`)  
-  - `include=all` → ambos
+- **Filtros:**  
+  `statusId`, `priorityId`, `typeId`, `termId`, `tagId`, `q`, `dueFrom`, `dueTo`, `archived` (`true|false`)
+- **Proyección:**  
+  `include=lookups|tags|all`
+- **Orden:**  
+  `orderByField`, `orderByDir` (`asc|desc`)
+- **Paginación:**  
+  `limit` (1–200), `offset` (≥0)
 
 ## Ejemplos
 
-- **Listar próximas tareas del periodo 1 con etiquetas incluidas:**
+### Listar tareas con etiquetas incluidas
 
-```json
-GET /api/tasks?termId=1&archived=false&dueFrom=2026-01-01&include=all&limit=20
+```bash
+GET /api/tasks?include=all&limit=10
 ```
 
-- **Crear varias tareas:**
+### Eliminar tareas por IDs
 
-```json
-POST /api/tasks
-[
-  { "title": "Lectura", "taskStatusId": 1, "taskPriorityId": 2, "taskTypeId": 3, "termId": 1 },
-  { "title": "Proyecto", "taskStatusId": 1, "taskPriorityId": 3, "taskTypeId": 2, "termId": 1 }
-]
-```
-
-- **Eliminar varias:**
-
-```json
+```bash
 DELETE /api/tasks
-{ "ids": ["uuid-1","uuid-2","uuid-3"] }
+{ "ids": ["uuid1", "uuid2"] }
 ```
 
 ## Errores esperados
 
-- `400`: body inválido/ausente, parámetros inconsistentes.
-- `404`: no encontrado (GET :id).
-- `409`: conflicto de unicidad (tareas activas duplicadas) o FK.
+- `400`: body inválido o parámetros incorrectos.
+- `404`: tarea no encontrada.
+- `409`: duplicado (índice único parcial) o FK inválido.
+
+## Diagrama de flujo
+
+```mermaid
+flowchart TD
+  A[Cliente HTTP] --> B[Express Router /api/tasks]
+  B --> C{Método HTTP}
+  C -->|GET /| D[getList]
+  C -->|GET /:id| E[getOne]
+  C -->|POST /| F[createMany]
+  C -->|PUT /| G[updateManyCtrl]
+  C -->|DELETE /| H[deleteManyCtrl]
+  D & E & F & G & H --> I[tasksController]
+  I --> J[tasksService]
+  J --> K[Prisma ORM → tasks]
+```
+
+## Dependencias internas
+
+- `express.Router`
+- `tasksController.js`
+- `tasksService.js`

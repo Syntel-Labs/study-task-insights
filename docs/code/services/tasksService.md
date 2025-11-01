@@ -2,112 +2,133 @@
 
 ## Introducción
 
-Implementa la lógica de acceso a datos para **tasks** usando Prisma. Aplica filtros, paginación, relaciones opcionales, manejo de errores y respeta las restricciones únicas parciales definidas en la base de datos.
+Servicio principal para la entidad **`tasks`**, encargado de gestionar el acceso a datos, filtros, validaciones, y relaciones (lookups, etiquetas).  
+Implementado con **Prisma ORM**, maneja consultas complejas, errores de unicidad y validaciones de integridad referencial.
 
-## API del servicio
+## Funciones exportadas
 
-### `listTasks(params)`
+### 🟩 `listTasks(params)`
 
-**Entrada:**  
-`q, limit, offset, statusId, priorityId, typeId, termId, tagId, dueFrom, dueTo, archived, include, orderBy`  
-**Comportamiento:**  
+Lista tareas con soporte para:
 
-- Construye `where` dinámico:
-  - igualdad (`statusId`, `priorityId`, `typeId`, `termId`),
-  - N:M por etiqueta (`tagId` → `taskTagAssignments.some`),
-  - rango (`dueFrom`, `dueTo`),
-  - texto (`q` en `title`/`description`, case-insensitive),
-  - visibilidad (`archived`: por defecto solo activas).
-- `include`: `lookups`, `tags`, `all`.  
-- `orderBy` por `dueAt` asc (default) o el solicitado.  
-- Paginación segura (`limit`≤200).
+- Filtros: `statusId`, `priorityId`, `typeId`, `termId`, `tagId`, `q`, `dueFrom`, `dueTo`, `archived`.
+- Paginación (`limit`, `offset`), orden (`orderByField`, `orderByDir`).
+- `include=lookups|tags|all`.
 
-**Salida:**  
+**Ejemplo:**
 
-```json
-{ "items": [...], "total": 123 }
+```js
+await listTasks({ termId: 1, include: "all", limit: 10 });
 ```
-
-### `getTaskById(taskId, { include })`
-
-Obtiene una tarea por UUID con relaciones opcionales (`lookups`, `tags`, `all`).
-Si no existe → **404**.
-
-### `createTasks(payload)`
-
-Crea 1..n tareas (objeto o arreglo).
-
-- Limpia campos de solo lectura (`taskId`, `createdAt`, `updatedAt`).
-- Ejecuta creates en transacción.
-- Errores:
-
-  - **`P2003`**: violación de FK → **409**.
-  - **`P2002`**: conflicto de unicidad (índices parciales de tareas activas) → **409** con mensaje claro.
 
 **Respuesta:**
 
 ```json
-{ "count": n, "items": [ ... ] }
+{ "items": [...], "total": 50 }
 ```
 
-### `updateTasks(payload)`
+### 🟩 `getTaskById(taskId, { include })`
 
-Actualiza 1..n tareas. Requiere `taskId` en cada objeto.
+Obtiene una tarea por UUID.
+Incluye relaciones si se pasa `include=lookups|tags|all`.
+Lanza `404` si no existe.
 
-- Limpia campos de solo lectura; no permite cambiar `taskId`.
-- Respuesta incluye listas de conflicto/no encontrado:
+### 🟩 `createTasks(payload)`
+
+Crea una o varias tareas nuevas.
+
+- Limpia campos de solo lectura (`taskId`, `createdAt`, `updatedAt`).
+- Usa transacción Prisma (`$transaction`) para atomicidad.
+- Manejo de errores:
+
+  - `P2003` → **409 FK inválida.**
+  - `P2002` → **409 Duplicado (índice único parcial).**
+
+**Respuesta:**
 
 ```json
 {
-  "count": n,
-  "items": [ ... ],
-  "notFoundIds": ["..."],
-  "conflictIds": [{ "id":"...", "message":"...", "target":[...] }]
+  "count": 2,
+  "items": [...]
 }
 ```
 
-- Errores:
+### 🟩 `updateTasks(payload)`
 
-  - **`P2025`**: no encontrada (se acumula en `notFoundIds`).
-  - **`P2002`**: conflicto de unicidad (activa duplicada).
-  - **`P2003`**: violación de FK.
+Actualiza una o varias tareas existentes.
 
-### `deleteTasks(ids)`
-
-Elimina 1..n por `taskId`.
-
-- Clasifica en `deletedIds`, `notFoundIds` y `blockedIds` (FK).
-  **Respuesta:**
+- Cada registro requiere `taskId`.
+- Devuelve objetos actualizados, más listas de errores:
 
 ```json
 {
   "count": n,
+  "items": [...],
+  "notFoundIds": [...],
+  "conflictIds": [...]
+}
+```
+
+**Errores manejados:**
+
+- `P2025`: no encontrada.
+- `P2002`: conflicto de unicidad.
+- `P2003`: violación de FK.
+
+### 🟩 `deleteTasks(ids)`
+
+Elimina una o varias tareas.
+Devuelve:
+
+```json
+{
+  "count": 2,
   "deletedIds": ["..."],
-  "notFoundIds": ["..."],
-  "blockedIds": ["..."]
+  "notFoundIds": [],
+  "blockedIds": []
 }
 ```
 
-## Includes soportados
+**Errores manejados:**
 
-- `lookups`: `taskStatus`, `taskPriority`, `taskType`, `term`
-- `tags`: `taskTagAssignments` + `taskTag`
-- `all`: lookups + tags
+- `P2025`: no encontrada.
+- `P2003`: restricción FK (bloqueada).
 
-## Consideraciones de unicidad (DB)
+## Validaciones internas
 
-La unicidad se garantiza con **índices únicos parciales**:
+| Función                 | Propósito                                                 |
+| ----------------------- | --------------------------------------------------------- |
+| `stripReadOnly()`       | Quita campos inmutables antes de guardar.                 |
+| `normalizePagination()` | Aplica límites seguros (`limit ≤ 200`).                   |
+| `buildWhere()`          | Crea filtros complejos (`q`, rangos, estado, tags, etc.). |
+| `buildInclude()`        | Controla relaciones incluidas (`lookups`, `tags`, `all`). |
 
-- `(term_id, lower(btrim(title)), due_at)` cuando la tarea está **activa** y `due_at` **no es nulo**.
-- `(term_id, lower(btrim(title)))` cuando la tarea está **activa** y `due_at` **es nulo**.
+## Índices únicos parciales (DB)
 
-El servicio traduce `P2002` → `409` con un mensaje explícito para el cliente.
+Para evitar duplicados de tareas activas:
+
+- `(term_id, lower(btrim(title)), due_at)` cuando `archived_at IS NULL` y `due_at` no es nulo.
+- `(term_id, lower(btrim(title)))` cuando `archived_at IS NULL` y `due_at` es nulo.
+
+Esto permite crear nuevas versiones de tareas archivadas sin conflictos.
 
 ## Diagrama
 
 ```mermaid
 flowchart TD
   A[Controller] --> B[listTasks / getTaskById / createTasks / updateTasks / deleteTasks]
-  B --> C[Prisma ORM: Task + includes]
-  C --> D[PostgreSQL: índices parciales, FKs]
+  B --> C[Prisma ORM]
+  C --> D[PostgreSQL: tasks + índices parciales]
 ```
+
+## Buenas prácticas
+
+- No actualizar `actualMin` directamente; debe derivarse de `study_sessions`.
+- Archivar tareas completadas para liberar restricciones de unicidad.
+- Evitar `include=all` en listados grandes (impacto de rendimiento).
+
+## Dependencias
+
+- `#config/prismaClient.js`
+- Prisma ORM
+- PostgreSQL (índices únicos parciales, FKs)
