@@ -60,7 +60,7 @@ const buildWhere = (filters = {}) => {
   }
 
   if (tagId) {
-    where.taskTagAssignments = {
+    where.tagAssignments = {
       some: { taskTagId: String(tagId) },
     };
   }
@@ -82,7 +82,7 @@ const buildInclude = (include) => {
     inc.term = true;
   }
   if (wantsTags) {
-    inc.taskTagAssignments = {
+    inc.tagAssignments = {
       include: { taskTag: true },
     };
   }
