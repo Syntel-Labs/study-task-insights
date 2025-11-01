@@ -4,6 +4,10 @@ import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 
 import catalogsRoutes from "#routes/catalogsRoutes.js";
+import tasksRoutes from "#routes/tasksRoutes.js";
+import taskTagAssignmentsRoutes from "#routes/taskTagAssignmentsRoutes.js";
+import studySessionsRoutes from "#routes/studySessionsRoutes.js";
+import weeklyProductivityRoutes from "#routes/weeklyProductivityRoutes.js";
 import { requestLogger } from "#middlewares/logger.js";
 import { errorHandler } from "#middlewares/errorHandler.js";
 import { accessGate } from "#middlewares/accessGate.js";
@@ -51,6 +55,10 @@ app.use(accessGate);
 
 // rutas
 app.use("/api/catalogs", catalogsRoutes);
+app.use("/api/tasks", tasksRoutes);
+app.use("/api/task-tag-assignments", taskTagAssignmentsRoutes);
+app.use("/api/study-sessions", studySessionsRoutes);
+app.use("/api/weekly-productivity", weeklyProductivityRoutes);
 
 // monitorear que el servicio este vivo
 app.get("/healthz", (_req, res) => {

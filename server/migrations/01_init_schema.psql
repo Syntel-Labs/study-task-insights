@@ -113,32 +113,58 @@ CREATE TABLE study_sessions (
 -- 5.4 weekly_productivity (materialized view)
 CREATE MATERIALIZED VIEW weekly_productivity AS
 SELECT
-    gen_random_uuid() AS weekly_productivity_id,
-    EXTRACT(YEAR FROM ss.started_at) AS iso_year,
-    EXTRACT(WEEK FROM ss.started_at) AS iso_week,
-    COUNT(DISTINCT t.task_id) FILTER (WHERE t.created_at >= date_trunc('week', ss.started_at)
-                                       AND t.created_at < date_trunc('week', ss.started_at) + interval '1 week') AS tasks_created,
-    COUNT(DISTINCT t.task_id) FILTER (WHERE t.completed_at >= date_trunc('week', ss.started_at)
-                                       AND t.completed_at < date_trunc('week', ss.started_at) + interval '1 week') AS tasks_completed,
-    CASE WHEN COUNT(DISTINCT t.task_id) FILTER (WHERE t.created_at >= date_trunc('week', ss.started_at)
-                                       AND t.created_at < date_trunc('week', ss.started_at) + interval '1 week') = 0
-         THEN 0
-         ELSE ROUND(
-             COUNT(DISTINCT t.task_id) FILTER (WHERE t.completed_at >= date_trunc('week', ss.started_at)
-                                              AND t.completed_at < date_trunc('week', ss.started_at) + interval '1 week')::numeric
-             /
-             COUNT(DISTINCT t.task_id) FILTER (WHERE t.created_at >= date_trunc('week', ss.started_at)
-                                              AND t.created_at < date_trunc('week', ss.started_at) + interval '1 week')::numeric
-             * 100, 2)
-    END AS completion_rate,
-    COALESCE(SUM(t.estimated_minutes),0) AS planned_minutes,
-    COALESCE(SUM(ss.duration_minutes),0) AS actual_minutes,
-    NULL::integer AS avg_completion_time_min,
-    now() AS created_at,
-    now() AS updated_at
+  gen_random_uuid()                                         AS weekly_productivity_id,
+  EXTRACT(YEAR FROM ss.started_at)::int                     AS iso_year,
+  EXTRACT(WEEK FROM ss.started_at)::int                     AS iso_week,
+
+  COUNT(DISTINCT t.task_id) FILTER (
+    WHERE t.created_at >= date_trunc('week', ss.started_at)
+      AND t.created_at <  date_trunc('week', ss.started_at) + interval '1 week'
+  )::int                                                    AS tasks_created,
+
+  COUNT(DISTINCT t.task_id) FILTER (
+    WHERE t.completed_at >= date_trunc('week', ss.started_at)
+      AND t.completed_at <  date_trunc('week', ss.started_at) + interval '1 week'
+  )::int                                                    AS tasks_completed,
+
+  CASE
+    WHEN COUNT(DISTINCT t.task_id) FILTER (
+           WHERE t.created_at >= date_trunc('week', ss.started_at)
+             AND t.created_at <  date_trunc('week', ss.started_at) + interval '1 week'
+         ) = 0
+    THEN 0
+    ELSE ROUND(
+      COUNT(DISTINCT t.task_id) FILTER (
+        WHERE t.completed_at >= date_trunc('week', ss.started_at)
+          AND t.completed_at <  date_trunc('week', ss.started_at) + interval '1 week'
+      )::numeric
+      /
+      COUNT(DISTINCT t.task_id) FILTER (
+        WHERE t.created_at >= date_trunc('week', ss.started_at)
+          AND t.created_at <  date_trunc('week', ss.started_at) + interval '1 week'
+      )::numeric * 100, 2
+    )
+  END::float8                                               AS completion_rate,
+
+  COALESCE(SUM(t.estimated_minutes), 0)::int                AS planned_minutes,
+  COALESCE(SUM(ss.duration_minutes), 0)::int                AS actual_minutes,
+
+  /* promedio en minutos entre creación y completado, solo tareas completadas esa semana */
+  COALESCE(ROUND(AVG(
+    EXTRACT(EPOCH FROM (t.completed_at - t.created_at)) / 60.0
+  ) FILTER (
+    WHERE t.completed_at >= date_trunc('week', ss.started_at)
+      AND t.completed_at <  date_trunc('week', ss.started_at) + interval '1 week'
+  )), 0)::int                                               AS avg_completion_time_min,
+
+  now()                                                     AS created_at,
+  now()                                                     AS updated_at
 FROM tasks t
 LEFT JOIN study_sessions ss ON ss.task_id = t.task_id
 GROUP BY iso_year, iso_week;
+
+CREATE UNIQUE INDEX uq_weekly_productivity_week
+  ON weekly_productivity (iso_year, iso_week);
 
 -- índice único
 CREATE UNIQUE INDEX uq_weekly_productivity_week ON weekly_productivity (iso_year, iso_week);

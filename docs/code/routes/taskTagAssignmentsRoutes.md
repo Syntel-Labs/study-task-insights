@@ -32,7 +32,7 @@ Sigue la convención REST estándar del backend de Study Task Insights, con oper
 GET /api/task-tag-assignments?taskId=uuid-task1&include=tag
 ```
 
-**Respuesta**
+**Respuesta:**
 
 ```json
 {
