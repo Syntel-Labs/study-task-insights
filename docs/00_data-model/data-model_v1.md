@@ -254,3 +254,31 @@ Esta **materialized view** consolida automáticamente resúmenes semanales de de
   **Por qué**: acceso directo a la semana solicitada y garantía de un registro por semana.
   
   **Beneficio**: reportes semanales y agregaciones consistentes.
+
+## 4. Diseño
+
+### 1. Estrategia de IDs
+
+- **UUID** en entidades dinámicas (`tasks`, `task_tags`, `task_tag_assignments`, `study_sessions`):
+  Evita exponer IDs secuenciales, permite inserciones simultáneas sin bloqueos y simplifica integraciones o replicaciones futuras.
+
+- **SMALLSERIAL** en catálogos (`terms`, `task_statuses`, `task_priorities`, `task_types`):
+  Más liviano y rápido para tablas pequeñas y estables que se usan en muchos joins.
+
+> **Trade-off:** el UUID ocupa más, pero solo se usa donde aporta valor (entidades activas o con relaciones N:M).
+
+### 2. Fechas y tiempos
+
+- **`TIMESTAMPTZ`** en tareas y sesiones: asegura coherencia en distintos husos horarios.
+- **`DATE`** en `terms`: los periodos académicos solo necesitan fechas claras de inicio y fin.
+
+### 3. Enums y unicidad
+
+- `ENUM('active','inactive')` en `terms`: mantiene estados válidos y controlados.
+- Campos únicos (`terms.name`, `task_types.code`, `task_tags.name`, etc.): evitan duplicados y simplifican búsquedas.
+
+### 4. Longitudes de texto
+
+- `name`/`code`: 30–80 caracteres → cortos, legibles y eficientes.
+- `description`: hasta 160 → útil para notas o tooltips.
+- `color`: hasta 20 → suficiente para valores hex o nombres cortos.
