@@ -126,7 +126,7 @@ model StudySession {
   taskId          String   @map("task_id") @db.Uuid
   startedAt       DateTime @map("started_at") @db.Timestamptz(6)
   endedAt         DateTime @map("ended_at") @db.Timestamptz(6)
-  durationMinutes Int      @map("duration_minutes")
+  durationMinutes Int      @default(dbgenerated()) @map("duration_minutes")
   notes           String?
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
