@@ -163,9 +163,6 @@ FROM tasks t
 LEFT JOIN study_sessions ss ON ss.task_id = t.task_id
 GROUP BY iso_year, iso_week;
 
-CREATE UNIQUE INDEX uq_weekly_productivity_week
-  ON weekly_productivity (iso_year, iso_week);
-
 -- índice único
 CREATE UNIQUE INDEX uq_weekly_productivity_week ON weekly_productivity (iso_year, iso_week);
 
