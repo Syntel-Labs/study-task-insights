@@ -9,6 +9,7 @@ import taskTagAssignmentsRoutes from "#routes/taskTagAssignmentsRoutes.js";
 import studySessionsRoutes from "#routes/studySessionsRoutes.js";
 import weeklyProductivityRoutes from "#routes/weeklyProductivityRoutes.js";
 import batchImportRoutes from "#routes/batchImportRoutes.js";
+import llmRoutes from "#routes/llmRoutes.js";
 
 import { requestLogger } from "#middlewares/logger.js";
 import { errorHandler } from "#middlewares/errorHandler.js";
@@ -62,6 +63,7 @@ app.use("/api/task-tag-assignments", taskTagAssignmentsRoutes);
 app.use("/api/study-sessions", studySessionsRoutes);
 app.use("/api/weekly-productivity", weeklyProductivityRoutes);
 app.use("/api/import/batch", batchImportRoutes);
+app.use("/api/llm", llmRoutes);
 
 // monitorear que el servicio este vivo
 app.get("/healthz", (_req, res) => {

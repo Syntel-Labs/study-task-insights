@@ -43,7 +43,7 @@ const start = async () => {
   await testPrismaConnection();
 
   server.listen(PORT, () => {
-    console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
+    console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
   });
 };
 
