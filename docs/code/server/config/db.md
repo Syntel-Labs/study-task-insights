@@ -45,14 +45,14 @@ Hora actual en PostgreSQL: 2025-10-31 18:21:00.123456+00
 
 ## Variables de entorno utilizadas
 
-| Variable   | Descripción                  | Ejemplo                      |
-| ---------- | ---------------------------- | ---------------------------- |
-| `DB_HOST`  | Host del servidor PostgreSQL | `localhost`                  |
-| `DB_PORT`  | Puerto del servidor          | `5432`                       |
-| `DB_NAME`  | Nombre de la base de datos   | `study_task_insights`        |
-| `DB_USER`  | Usuario de conexión          | `postgres`                   |
-| `DB_PASS`  | Contraseña del usuario       | `secret`                     |
-| `NODE_ENV` | Determina uso de SSL         | `production` o `development` |
+| Variable   | Descripción                  |
+| ---------- | ---------------------------- |
+| `DB_HOST`  | Host del servidor PostgreSQL |
+| `DB_PORT`  | Puerto del servidor          |
+| `DB_NAME`  | Nombre de la base de datos   |
+| `DB_USER`  | Usuario de conexión          |
+| `DB_PASS`  | Contraseña del usuario       |
+| `NODE_ENV` | Determina uso de SSL         |
 
 ## Dependencias internas
 
