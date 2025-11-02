@@ -1,21 +1,28 @@
-# docker.md — Contenedorización del Backend
+# Contenedorización del Backend
 
 ## Introducción
 
 El archivo `docker.md` documenta la infraestructura de contenedores del backend de **Study Task Insights**, implementada con **Docker** y **Docker Compose**.
-Define cómo se construyen, ejecutan y coordinan los servicios del backend (API Node.js y base de datos PostgreSQL), junto con sus configuraciones, dependencias y procesos de inicialización.
+Define cómo se construyen, ejecutan y coordinan los servicios que componen la aplicación: API Node.js, base de datos PostgreSQL y el servicio de modelo de lenguaje (**Ollama**).
 
 ## Descripción general
 
-El sistema se compone de dos servicios principales:
+El sistema está compuesto por tres servicios principales y un auxiliar:
 
-1. **db** — Contenedor basado en la imagen oficial de PostgreSQL 16, responsable de almacenar los datos de la aplicación.
-   Se inicializa automáticamente ejecutando los scripts `.psql` ubicados en `server/migrations/`, a través de un script auxiliar `00_init.sh`.
+1. **db** — Contenedor de **PostgreSQL 16** que almacena toda la información persistente de la aplicación.
+   Se inicializa automáticamente con los scripts `.psql` ubicados en `server/migrations/`, ejecutados por `00_init.sh`.
 
-2. **api** — Contenedor que ejecuta la aplicación Node.js (Express + Prisma ORM).
-   Utiliza `pnpm` como gestor de dependencias, se conecta internamente al contenedor `db`, y expone la API en el puerto `3000`.
+2. **api** — Contenedor de **Node.js 22** que ejecuta el backend Express con Prisma ORM.
+   Se conecta internamente a `db` y al servicio `ollama` para la generación de recomendaciones vía LLM.
+   Expone la API en el puerto `3000`.
 
-El sistema usa un volumen persistente (`pgdata`) para la base de datos, evitando la pérdida de información entre reinicios.
+3. **ollama** — Servicio que ejecuta el motor **Ollama**, responsable de hospedar el modelo local de lenguaje (`qwen2.5:7b-instruct`).
+   Se mantiene en segundo plano y es accesible solo desde la red interna de Docker.
+
+4. **ollama-init** — Servicio auxiliar que se ejecuta una única vez al iniciar el entorno; descarga el modelo requerido y termina.
+   Garantiza que el modelo esté disponible antes de que la API se inicie.
+
+Los volúmenes persistentes `pgdata` y `ollama` aseguran la conservación de datos y modelos entre reinicios.
 
 ## Diagrama de flujo
 
@@ -23,113 +30,134 @@ El sistema usa un volumen persistente (`pgdata`) para la base de datos, evitando
 flowchart TD
   A[Docker Compose] --> B[db: postgres:16]
   A --> C[api: Node.js 22]
+  A --> D[ollama: modelo LLM]
+  A --> E[ollama-init: descarga modelo]
+
   B <---> C
-  subgraph Volumen Persistente
-    D[(pgdata)]
+  D --> E
+  E -.-> C
+  subgraph Volúmenes Persistentes
+    F[(pgdata)]
+    G[(ollama)]
   end
-  B --> D
-  E[Host] -->|HTTP :3000| C
+  B --> F
+  D --> G
+  H[Host] -->|HTTP :3000| C
 ```
 
-El flujo muestra cómo Docker Compose orquesta los servicios:
+**Flujo general:**
 
-- El contenedor `api` depende de `db` y espera a que la base de datos esté lista.
-- Los scripts de inicialización de SQL se ejecutan al crear el contenedor de la base.
-- El volumen `pgdata` conserva el estado de los datos entre ejecuciones.
+- `db` arranca y se inicializa con scripts SQL.
+- `ollama` inicia y es verificado por un *healthcheck*.
+- `ollama-init` descarga el modelo definido (`qwen2.5:7b-instruct`) en el volumen compartido.
+- `api` espera a que ambos servicios estén listos antes de iniciar el servidor Express.
 
 ## Componentes documentados
 
 ### 1. `.dockerignore`
 
-Define los archivos y carpetas que se excluyen del contexto de construcción de la imagen.
-Evita copiar dependencias (`node_modules`), archivos de configuración locales (`.env`) y artefactos innecesarios que aumentan el tamaño de la imagen.
+Define los archivos que se excluyen del contexto de construcción (por ejemplo: `node_modules`, `.env`, logs y archivos temporales).
+Reduce el tamaño de las imágenes y mejora los tiempos de build.
 
 ### 2. `Dockerfile`
 
-Construye la imagen del servicio **api**.
-Consta de cuatro etapas:
+Construye la imagen base del backend (`api`) en cuatro etapas:
 
-- **base**: configura el entorno Node 22, habilita `corepack` y define el directorio de trabajo.
-- **deps**: instala las dependencias declaradas en `package.json` y `pnpm-lock.yaml`.
-- **build**: ejecuta la generación de Prisma (`prisma generate`) para compilar el cliente ORM.
-- **runner**: copia dependencias, código fuente y artefactos generados. Expone el puerto 3000 y ejecuta el servidor.
+1. **base**: configura Node.js 22 y habilita `corepack`.
+2. **deps**: instala dependencias con `pnpm` desde `package.json` y `pnpm-lock.yaml`.
+3. **build**: ejecuta `prisma generate` para preparar el cliente ORM.
+4. **runner**: copia el código fuente, dependencias y artefactos; expone el puerto `3000`.
 
-El resultado es una imagen optimizada para producción que encapsula todo el backend.
+El resultado es una imagen lista para producción, ligera y reproducible.
 
 ### 3. `docker-compose.yml`
 
-Orquesta la ejecución de los contenedores **db** y **api**.
-Define los siguientes comportamientos:
+Coordina los servicios que forman el backend completo:
 
-- Crea una red interna para la comunicación entre servicios.
-- Usa variables de entorno definidas en `.env` para credenciales y configuración.
-- Ejecuta automáticamente los scripts SQL (`*.psql`) al iniciar la base de datos.
-- Realiza comprobaciones de salud (`healthcheck`) para asegurar que `db` esté lista antes de iniciar `api`.
-- Expone los puertos 5432 (DB) y 3000 (API) hacia el host.
+#### **db**
 
-Incluye un volumen persistente (`pgdata`) para almacenar datos de la base de datos de forma segura.
+- Imagen base `postgres:16`.
+- Usa las variables del `.env` para usuario, contraseña y base de datos.
+- Ejecuta los scripts SQL iniciales desde `./migrations/`.
+- Healthcheck: espera a que la base responda correctamente antes de continuar.
 
-### 4. `00_init.sh`
+#### **ollama**
 
-Script encargado de ejecutar en orden todos los archivos `.psql` contenidos en `/docker-entrypoint-initdb.d/` (montados desde `server/migrations/`).
-Su propósito es inicializar la estructura del esquema, las tablas y los datos semilla.
+- Imagen oficial `ollama/ollama:latest`.
+- Mantiene los modelos descargados en un volumen persistente `ollama`.
+- Healthcheck: verifica la disponibilidad de `ollama list`.
+- No expone puertos al host (solo accesible internamente por el backend).
 
-El script:
+#### **ollama-init**
 
-- Se ejecuta automáticamente la primera vez que el contenedor `db` es creado.
-- Detiene la ejecución ante cualquier error (`set -e`).
-- Muestra en consola qué archivo se está ejecutando y confirma su finalización.
-- Garantiza que la base quede lista antes de iniciar la API.
+- Imagen igual a `ollama/ollama`.
+- Se ejecuta una sola vez (`restart: no`).
+- Descarga el modelo definido (`qwen2.5:7b-instruct`) antes de permitir el arranque de la API.
+- Usa el mismo volumen `ollama` para compartir el modelo.
+
+#### **api**
+
+- Construida desde el `Dockerfile` del proyecto.
+- Depende de `db` y `ollama-init`.
+- Carga variables desde `.env` (por ejemplo, `DATABASE_URL`, `OLLAMA_URL`, `LLM_MODEL`).
+- Expone el puerto `3000` al host.
+- Se reinicia automáticamente (`restart: unless-stopped`).
+
+#### **volúmenes**
+
+- `pgdata` → almacenamiento persistente para la base de datos.
+- `ollama` → almacenamiento de modelos LLM.
 
 ## Variables de entorno
 
-Definidas en `server/.env`, controlan el comportamiento del sistema y la conexión entre servicios.
-Incluyen parámetros de base de datos, puerto de la API, entorno de ejecución y configuración de integraciones externas.
-La variable principal es `DATABASE_URL`, usada por Prisma para conectarse al contenedor `db`.
+Las configuraciones se leen desde el archivo `.env`, que debe generarse a partir de `.env.example`.
+Incluyen parámetros para:
+
+- Conexión a PostgreSQL
+- Puerto y entorno del servidor Express
+- Control de autenticación (`ACCESS_TOKEN`, `ACCESS_ENABLED`)
+- Configuración del modelo LLM (`OLLAMA_URL`, `LLM_MODEL`, `LLM_TIMEOUT_MS`, `LLM_TEMPERATURE`)
 
 ## Ciclo de vida de uso
 
-1. **Construcción y arranque inicial**
+1. **Construcción y despliegue inicial**
 
    ```bash
    docker compose up -d --build
    ```
 
-   Crea las imágenes, levanta los servicios y ejecuta el proceso de inicialización de la base de datos.
+   Construye imágenes, levanta los servicios y descarga el modelo LLM si no existe.
 
-2. **Verificación**
+2. **Verificación de estado**
 
    ```bash
    docker compose ps
    docker compose logs -f db
+   docker compose logs -f ollama
    docker compose logs -f api
    ```
 
-   Permite comprobar que ambos servicios estén activos y operativos.
+   Permite comprobar que los contenedores están activos y que el modelo fue descargado correctamente.
 
-3. **Reinicio limpio (recrear DB y esquema)**
+3. **Reinicio limpio**
 
    ```bash
    docker compose down -v
-   docker compose build --no-cache
-   docker compose up -d
+   docker compose up -d --build
    ```
 
-   Elimina el volumen persistente y fuerza la recreación de la base y las tablas desde los scripts.
+   Elimina volúmenes (`pgdata`, `ollama`) y reinicia todo el entorno desde cero.
 
 ## Consideraciones técnicas
 
-- La inicialización de la base solo ocurre la **primera vez** o cuando el volumen `pgdata` es eliminado.
-- El contenedor `api` depende del estado de salud (`healthy`) del servicio `db`.
-- Todos los comandos de construcción y ejecución deben ejecutarse desde el directorio `server/`.
-- Mmantener la misma estructura y volumen en entorno de despliegue.
+- `ollama` y `api` están en la misma red interna, permitiendo conexión por `http://ollama:11434`.
+- `ollama-init` solo corre una vez y se detiene al finalizar la descarga del modelo.
+- Los volúmenes garantizan persistencia tanto de datos (DB) como del modelo LLM.
+- Todos los comandos deben ejecutarse desde el directorio `server/`.
 
 ## Dependencias internas
 
-- `server/.dockerignore` — Configura exclusiones del contexto de build.
-- `server/Dockerfile` — Define la imagen de la aplicación backend.
-- `server/docker-compose.yml` — Orquesta base de datos y backend.
-- `server/migrations/00_init.sh` — Automatiza la inicialización del esquema y carga inicial de datos.
-
-Este documento cumple con el estándar organizacional:
-estructura modular, explicación funcional, flujo técnico y dependencias claramente definidas.
+- `server/.dockerignore` — exclusiones de contexto.
+- `server/Dockerfile` — imagen del backend Node.js.
+- `server/docker-compose.yml` — orquestación completa (DB + API + LLM).
+- `server/migrations/00_init.sh` — inicialización del esquema SQL.
