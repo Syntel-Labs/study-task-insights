@@ -30,11 +30,11 @@
 ## 4️⃣ Backend
 
 * [x] Definir **estructura de carpetas y módulos**: controllers, routes, services, middlewares.
-* [ ] Implementar **CRUD básico** de tareas (sin usuarios por ahora).
-* [ ] Integrar **base de datos** con ORM.
-* [ ] Añadir **logs y manejo de errores** básicos.
-* [ ] Configurar **scripts de desarrollo** y nodemon para hot reload.
-* [ ] Preparar **Postman collection** con endpoints.
+* [x] Implementar **CRUD básico** de tareas (sin usuarios por ahora).
+* [x] Integrar **base de datos** con ORM.
+* [x] Añadir **logs y manejo de errores** básicos.
+* [x] Configurar **scripts de desarrollo** y nodemon para hot reload.
+* [x] Preparar **Postman collection** con endpoints.
 
 ## 5️⃣ Frontend
 
@@ -73,6 +73,6 @@
 
 ## 9️⃣ Funcionalidades futuras / extras
 
-* [ ] Implementar **modelo LLM** que reciba métricas de tareas y genere recomendaciones.
+* [x] Implementar **modelo LLM** que reciba métricas de tareas y genere recomendaciones.
 * [ ] Integrar **Wiki** con tutoriales de usuario, FAQs, screenshots y vídeos.
 * [ ] Mejorar visualización y UX del frontend según métricas y feedback.
