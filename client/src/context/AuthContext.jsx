@@ -12,13 +12,23 @@ import { useGateApi } from "@hooks/api";
 
 const AuthContext = createContext(null);
 
-/** proveedor de autenticación */
+/** Proveedor de autenticación */
 export function AuthProvider({ children }) {
   const { login: gateLogin, logout: gateLogout } = useGateApi();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const softTimerRef = useRef(null);
   const hardTimerRef = useRef(null);
+  const lastFocusCheckRef = useRef(0);
+  const AUTH_FLAG = "stia_auth";
+
+  function hasClientSessionFlag() {
+    try {
+      return localStorage.getItem(AUTH_FLAG) === "1";
+    } catch {
+      return false;
+    }
+  }
 
   function clearTimers() {
     if (softTimerRef.current) {
@@ -33,57 +43,110 @@ export function AuthProvider({ children }) {
 
   function scheduleSessionTimers() {
     clearTimers();
-    softTimerRef.current = setTimeout(
-      () => refreshSession({ silent: true }),
-      sessionCfg.softTimeout
-    );
-    hardTimerRef.current = setTimeout(() => logout(), sessionCfg.hardTimeout);
+    const totalMs = Number(sessionCfg.hours) * 60 * 60 * 1000;
+    const revalidateMs = Number(sessionCfg.revalidateMs ?? 5 * 60 * 1000);
+    const softMs = Math.max(30_000, totalMs - revalidateMs);
+    const hardMs = Math.max(60_000, totalMs);
+
+    softTimerRef.current = setTimeout(() => {
+      refreshSession({ silent: true }).catch(() => {});
+    }, softMs);
+
+    hardTimerRef.current = setTimeout(async () => {
+      const ok = await revalidateOnce().catch(() => false);
+      if (!ok) await logout();
+      else scheduleSessionTimers();
+    }, hardMs);
   }
 
-  const refreshSession = useCallback(async (opts = {}) => {
-    const { silent = false } = opts;
-    if (!silent) setLoading(true);
-    try {
-      const url = buildApiUrl("weekly-productivity", { limit: 1 });
-      const resp = await fetch(url, { credentials: "include" });
-      const ok = resp.ok;
-      setIsAuthenticated((prev) => (prev !== ok ? ok : prev));
-      if (ok) scheduleSessionTimers();
-      else clearTimers();
-    } catch {
-      setIsAuthenticated(false);
-      clearTimers();
-    } finally {
-      if (!silent) setLoading(false);
-    }
+  // Hace 1 ping al endpoint protegido y retorna boolean
+  const revalidateOnce = useCallback(async () => {
+    const url = buildApiUrl("weekly-productivity", { limit: 1 });
+    const resp = await fetch(url, { credentials: "include" });
+    return resp.ok;
   }, []);
+
+  const refreshSession = useCallback(
+    async (opts = {}) => {
+      const { silent = false } = opts;
+      if (!hasClientSessionFlag()) return false;
+      if (!silent) setLoading(true);
+      try {
+        const ok = await revalidateOnce();
+        setIsAuthenticated((prev) => (prev !== ok ? ok : prev));
+        if (ok) scheduleSessionTimers();
+        else clearTimers();
+      } catch {
+        setIsAuthenticated(false);
+        clearTimers();
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [revalidateOnce]
+  );
+
+  const waitForSession = useCallback(
+    async (maxAttempts = 8) => {
+      let attempt = 0;
+      while (attempt < maxAttempts) {
+        const ok = await revalidateOnce().catch(() => false);
+        if (ok) return true;
+        const delay = Math.min(100 * 2 ** attempt, 1600);
+        await new Promise((r) => setTimeout(r, delay));
+        attempt++;
+      }
+      return false;
+    },
+    [revalidateOnce]
+  );
 
   const login = useCallback(
     async (secret) => {
       await gateLogin({ secret });
+      const ready = await waitForSession();
+      if (!ready) {
+        const err = new Error("La sesión no se estableció tras el login.");
+        err.status = 401;
+        throw err;
+      }
+      try {
+        localStorage.setItem(AUTH_FLAG, "1");
+      } catch {}
       setIsAuthenticated(true);
       scheduleSessionTimers();
-      refreshSession({ silent: true }).catch(() => {});
       return true;
     },
-    [gateLogin, refreshSession]
+    [gateLogin, waitForSession]
   );
 
   const logout = useCallback(async () => {
     try {
       await gateLogout();
     } finally {
+      try {
+        localStorage.removeItem(AUTH_FLAG);
+      } catch {}
       setIsAuthenticated(false);
       clearTimers();
     }
   }, [gateLogout]);
 
   useEffect(() => {
-    refreshSession();
+    if (hasClientSessionFlag()) {
+      refreshSession({ silent: false }).catch(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [refreshSession]);
+
+  useEffect(() => () => clearTimers(), []);
 
   useEffect(() => {
     function onUnauthorized() {
+      try {
+        localStorage.removeItem(AUTH_FLAG);
+      } catch {}
       setIsAuthenticated(false);
       clearTimers();
     }
@@ -94,7 +157,12 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     function onFocus() {
-      refreshSession({ silent: true }).catch(() => {});
+      const now = Date.now();
+      if (!hasClientSessionFlag()) return;
+      if (now - lastFocusCheckRef.current > 30_000) {
+        lastFocusCheckRef.current = now;
+        refreshSession({ silent: true }).catch(() => {});
+      }
     }
     function onVisibilityChange() {
       if (document.visibilityState === "visible") onFocus();

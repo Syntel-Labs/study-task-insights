@@ -12,10 +12,19 @@ export function useGateApi() {
       body: JSON.stringify({ secret }),
     });
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
     const contentType = resp.headers.get("content-type") || "";
-    return contentType.includes("application/json") ? resp.json() : resp.text();
+    const data = contentType.includes("application/json")
+      ? await resp.json()
+      : await resp.text();
+
+    if (!resp.ok) {
+      const err = new Error((data && data.message) || `HTTP ${resp.status}`);
+      err.status = resp.status;
+      err.payload = data;
+      throw err;
+    }
+
+    return data;
   }, []);
 
   // logout, invalida sesión
@@ -25,10 +34,19 @@ export function useGateApi() {
       credentials: "include",
     });
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
     const contentType = resp.headers.get("content-type") || "";
-    return contentType.includes("application/json") ? resp.json() : resp.text();
+    const data = contentType.includes("application/json")
+      ? await resp.json()
+      : await resp.text();
+
+    if (!resp.ok) {
+      const err = new Error((data && data.message) || `HTTP ${resp.status}`);
+      err.status = resp.status;
+      err.payload = data;
+      throw err;
+    }
+
+    return data;
   }, []);
 
   return { login, logout };
