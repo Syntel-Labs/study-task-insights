@@ -15,7 +15,8 @@ export function useApi() {
     const url = buildApiUrl(path, query);
 
     const finalHeaders = new Headers(headers);
-    if (useJson) finalHeaders.set("Content-Type", "application/json");
+    if (useJson && body !== undefined)
+      finalHeaders.set("Content-Type", "application/json");
 
     const resp = await fetch(url, {
       method,

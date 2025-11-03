@@ -51,9 +51,17 @@ export function buildApiUrl(path = "", query) {
   const url = new URL(joinUrl(apiBase, path));
   if (query && typeof query === "object") {
     Object.entries(query).forEach(([k, v]) => {
-      if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+      if (v === undefined || v === null) return;
+
+      if (Array.isArray(v)) {
+        // agrega un param por cada elemento del array
+        v.forEach((val) => url.searchParams.append(k, String(val)));
+      } else {
+        url.searchParams.set(k, String(v));
+      }
     });
   }
+
   return url.toString();
 }
 
