@@ -1,0 +1,891 @@
+@import "@styles/colors.css";
+@import "@styles/fonts.css";
+
+/* ===== Layout General ===== */
+.tasksPageRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+}
+
+.sectionCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.filtersCard {
+  margin-top: 0.5rem;
+}
+
+.tableCard {
+  overflow-x: auto;
+}
+
+/* ===== Header ===== */
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+  padding: 0.25rem 0;
+}
+
+.headerLeft {
+  min-width: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-family-heading);
+  color: var(--color-primary);
+}
+
+.counterMuted {
+  color: var(--color-text-secondary);
+}
+
+.searchInput :global(.MuiInputBase-root) {
+  min-width: 240px;
+}
+
+.orderControl :global(.MuiInputBase-root),
+.orderDirControl :global(.MuiInputBase-root) {
+  min-width: 160px;
+}
+
+.archivedSwitch :global(.MuiFormControlLabel-label) {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.filtersBtn,
+.createBtn {
+  text-transform: none;
+}
+
+@media (max-width: 900px) {
+  .searchInput :global(.MuiInputBase-root) {
+    min-width: 200px;
+  }
+  .orderControl :global(.MuiInputBase-root),
+  .orderDirControl :global(.MuiInputBase-root) {
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 600px) {
+  .headerRow {
+    align-items: flex-start;
+  }
+  .headerRight {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .searchInput :global(.MuiInputBase-root) {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ===== Filters Panel ===== */
+.filtersPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.filtersTitle {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.filtersRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem 0;
+}
+
+.filterControl :global(.MuiInputBase-root),
+.dateInput :global(.MuiInputBase-root) {
+  min-width: 160px;
+}
+
+.tagsRow {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.tagsRow:has(.tagsWrap) {
+  border-top: 1px dashed var(--color-border);
+}
+
+.filtersActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  border-top: 1px dashed var(--color-border);
+  padding-top: 1.75rem;
+}
+
+.clearBtn,
+.applyBtn {
+  text-transform: none;
+}
+
+@media (max-width: 900px) {
+  .filterControl :global(.MuiInputBase-root),
+  .dateInput :global(.MuiInputBase-root) {
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 600px) {
+  .filtersRow {
+    flex-direction: column;
+  }
+  .filterControl :global(.MuiInputBase-root),
+  .dateInput :global(.MuiInputBase-root) {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.emptyTagSpace {
+  display: inline-block;
+  min-height: 1.5rem;
+  line-height: 1.5rem;
+  visibility: hidden;
+}
+
+/* ===== Table / Celdas ===== */
+.tableWrapper {
+  width: 100%;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+  background-color: var(--neutral-100);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  user-select: none;
+}
+
+.table tbody tr:hover {
+  background-color: var(--neutral-50);
+}
+
+.table tbody tr.selected {
+  background-color: var(--brand-primary-50);
+}
+
+/* ===== Celdas específicas ===== */
+.colCheck {
+  width: 36px;
+  text-align: center;
+}
+.colActions {
+  text-align: right;
+  white-space: nowrap;
+}
+.colTitle {
+  width: 25%;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.colDue {
+  width: 120px;
+  white-space: nowrap;
+}
+.colTime {
+  width: 100px;
+  text-align: center;
+}
+.colFinal {
+  width: 120px;
+  text-align: center;
+}
+
+.cellTitle {
+  vertical-align: top;
+}
+.titleBtn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font-weight: 600;
+  color: var(--brand-primary-700);
+  cursor: pointer;
+  text-align: left;
+}
+.titleBtn:hover {
+  text-decoration: underline;
+}
+.subtitleMuted {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.3;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  line-clamp: 2;
+}
+
+.cellChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.colChips {
+  width: 280px;
+}
+
+.colTags {
+  width: 240px;
+}
+
+.cellDue,
+.timePair {
+  white-space: nowrap;
+}
+
+.cellActions {
+  text-align: right;
+}
+
+.iconBtn {
+  color: var(--color-text-secondary);
+}
+.iconBtn:hover {
+  color: var(--brand-primary-700);
+}
+.iconBtnDanger {
+  color: var(--color-error);
+}
+.iconBtnDanger:hover {
+  filter: brightness(0.9);
+}
+
+/* ===== Badges / Chips ===== */
+.badgeOpen,
+.badgeMuted,
+.badgeSuccess,
+.statusBadge,
+.priorityChip,
+.typeChip,
+.tagChip {
+  border-radius: 12px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badgeOpen {
+  background: var(--neutral-200);
+  color: var(--color-text-primary);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.badgeMuted {
+  background: var(--neutral-200);
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.badgeSuccess {
+  background: var(--brand-success-100, #e8f5ec);
+  color: var(--color-success);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.statusBadge {
+  background: var(--neutral-200);
+  color: var(--color-text-primary);
+  text-transform: capitalize;
+}
+.priority-low {
+  background-color: var(--color-success);
+}
+.priority-medium {
+  background-color: var(--brand-primary-400);
+}
+.priority-high {
+  background-color: var(--color-error);
+}
+.typeChip {
+  background-color: var(--neutral-200);
+  color: var(--color-text-primary);
+}
+.tagChip {
+  margin: 0.1rem;
+}
+.tagsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* ===== Sortable Header ===== */
+.sortBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-family-base);
+  transition: color 0.15s ease;
+}
+
+.sortBtn:hover {
+  color: var(--brand-primary-600);
+}
+.sortActive {
+  color: var(--brand-primary-700);
+}
+.sortIcon {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+.dir-asc {
+  border-bottom: 6px solid currentColor;
+}
+.dir-desc {
+  border-top: 6px solid currentColor;
+}
+
+/* ===== Drawer ===== */
+.taskDrawer {
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.drawerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.drawerHeaderActions {
+  display: flex;
+  gap: 0.5rem;
+}
+.drawerTitle {
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sectionDivider {
+  margin: 1rem 0;
+}
+.sectionTitle {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.metaList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1rem;
+  font-size: 0.85rem;
+}
+.metaList dt {
+  color: var(--color-text-secondary);
+}
+.metaList dd {
+  margin: 0;
+}
+
+.quickActions {
+  margin-top: 1rem;
+}
+.btnQuick {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: none;
+}
+.btnQuickDanger {
+  background-color: var(--color-error);
+  color: var(--color-text-inverse);
+}
+.btnClose {
+  color: var(--color-text-secondary);
+  text-transform: none;
+}
+
+/* ===== Tag Selector ===== */
+.tagSelectorRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.tagFilter,
+.tagSelect {
+  flex: 1;
+}
+.addTagBtn {
+  flex-shrink: 0;
+}
+.selectedTagsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-bottom: 1rem;
+}
+.addTagRow {
+  border-top: 1px dashed var(--color-border);
+  padding-top: 2rem;
+}
+.muted {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* ===== Bulk Actions ===== */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--neutral-100);
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.bulkActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ===== Pagination ===== */
+.paginationRoot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.paginationInfo {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+/* ===== Empty & Error States ===== */
+.emptyState,
+.errorState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-secondary);
+}
+
+.emptyState h2,
+.errorState h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.emptyState p,
+.errorState p {
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+/* ===== Misc ===== */
+.miniProgress {
+  height: 6px;
+  border-radius: 4px;
+  background-color: var(--neutral-200);
+  overflow: hidden;
+}
+
+.miniProgressBar {
+  height: 100%;
+  transition: width 0.3s ease;
+  background-color: var(--brand-primary-500);
+}
+
+.dueCell {
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.dueOverdue {
+  color: var(--color-error);
+  font-weight: 600;
+}
+.dueSoon {
+  color: var(--brand-primary-600);
+}
+.dueToday {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+/* ===== Opcional: oculta estilos de orden locales ===== */
+.sortBtn,
+.sortIcon,
+.sortActive {
+  display: none !important;
+}
+
+/* ===== Vista tabla: ocupa alto de viewport ===== */
+.tableViewport {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 220px); /* ajusta según header/márgenes */
+}
+
+/* Encabezado sticky */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Fila clickeable */
+.rowClickable {
+  cursor: pointer;
+}
+
+/* Espaciados del título/desc */
+.cellTitle {
+  vertical-align: top;
+}
+.subtitleMuted {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.3;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  line-clamp: 2;
+}
+
+/* Columnas separadas */
+.colStatus {
+  width: 140px;
+}
+.colPriority {
+  width: 120px;
+}
+.colType {
+  width: 160px;
+}
+.colTags {
+  width: 260px;
+}
+
+.cellTags,
+.cellStatus,
+.cellPriority,
+.cellType {
+  vertical-align: middle;
+}
+
+.cellTags {
+  gap: 4px;
+}
+
+.dim {
+  color: var(--color-text-secondary);
+}
+
+/* Que la tabla use todo el ancho */
+.tableWrapper {
+  width: 100%;
+}
+
+/* Paginación al fondo de la vista */
+.paginationRoot {
+  margin-top: auto; /* empuja hacia abajo dentro de .tableViewport */
+}
+
+/* ===== Bulk Actions (reserva espacio aunque esté oculta) ===== */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--neutral-100);
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+
+  /* Mantén siempre la altura para no desplazar la UI */
+  min-height: 44px;
+
+  /* Transición suave al mostrar/ocultar */
+  transition: opacity 0.18s ease, visibility 0.18s ease, transform 0.18s ease;
+}
+
+.bulkBarHidden {
+  visibility: hidden; /* oculta visualmente pero conserva el espacio */
+  opacity: 0; /* desvanecido */
+  pointer-events: none; /* no interactuable */
+  transform: translateY(-6px);
+}
+
+.bulkLeft,
+.bulkRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bulkCount {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.bulkStatusControl :global(.MuiInputBase-root) {
+  min-width: 200px;
+}
+
+.bulkBtn {
+  text-transform: none;
+}
+
+.bulkBtnDanger {
+  text-transform: none;
+}
+
+.bulkBtnClear {
+  text-transform: none;
+  color: var(--color-text-secondary);
+}
+
+/* ===== Pagination (bonito, con rems) ===== */
+.paginationBar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* izq, centro, der */
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+/* “Por página” a la izquierda */
+.paginationLeft {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 2.75rem; /* reserva vertical */
+}
+.limitControl :global(.MuiInputBase-root) {
+  min-width: 8.5rem; /* ~136px */
+}
+
+/* Centro con botones e input de página */
+.paginationCenter {
+  justify-content: center;
+  gap: 1rem;
+  min-height: 2.75rem;
+}
+
+.pageButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+.pageButtons :global(.MuiButton-root) {
+  text-transform: none;
+  min-width: 6.5rem; /* 6.5rem ≈ 104px */
+  padding: 0.375rem 0.75rem; /* 6px 12px */
+  line-height: 1.2;
+}
+
+/* “Página [input] de N” */
+.pageForm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pageLabel {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+.pageInput :global(.MuiInputBase-root) {
+  width: 5rem; /* 80px aprox */
+  height: 2rem; /* controla altura visual */
+}
+.pagesTotal {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Empuja la barra al final cuando vive en una vista alta */
+.tableViewport > .paginationBar {
+  margin-top: auto;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+  .paginationBar {
+    grid-template-columns: 1fr; /* apila en mobile */
+    row-gap: 0.75rem;
+  }
+  .paginationLeft {
+    justify-content: flex-start;
+  }
+  .paginationCenter {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .pageButtons :global(.MuiButton-root) {
+    min-width: auto;
+    padding: 0.35rem 0.6rem;
+  }
+  .pageInput :global(.MuiInputBase-root) {
+    width: 4.5rem;
+  }
+}
+
+/* ===== Empty State (Tasks) ===== */
+.stateWrap {
+  /* layout centrado y espaciado consistente */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem; /* 12px aprox */
+  text-align: center;
+  padding: 1.25rem; /* 20px aprox */
+  min-height: clamp(14rem, 40vh, 32rem); /* no encoja ni crezca excesivo */
+  color: var(--color-text-primary);
+}
+
+.stateEmpty {
+  /* fondo sutil para contraste dentro de la card; no agregamos bordes */
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--neutral-100), transparent 60%) 0%,
+    transparent 100%
+  );
+  border-radius: 0.5rem; /* 8px */
+  width: 100%;
+}
+
+.stateTitle {
+  font-family: var(--font-family-heading);
+  font-weight: 600;
+  font-size: 1.15rem; /* ~18.4px */
+  line-height: 1.3;
+  margin: 0;
+}
+
+.stateText {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem; /* ~15.2px */
+  line-height: 1.5;
+  max-width: 40rem; /* ~640px para líneas cómodas */
+  margin: 0;
+}
+
+.stateActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem; /* 8px */
+  margin-top: 0.75rem; /* 12px */
+}
+
+/* Botón primario dentro del estado vacío (sin afectar otros .createBtn) */
+.stateWrap .createBtn :global(.MuiButtonBase-root),
+.stateWrap .createBtn {
+  text-transform: none;
+  font-weight: 600;
+  border-radius: 0.5rem; /* 8px */
+  padding: 0.5rem 1rem; /* 8px 16px */
+  min-height: 2.25rem; /* 36px */
+}
+
+/* Soporte opcional para ícono/ilustración si decides mostrarlo */
+.stateIcon {
+  font-size: 2.25rem; /* ~36px */
+  line-height: 1;
+  margin-bottom: 0.25rem; /* 4px */
+  opacity: 0.9;
+  /* Si usas imagen SVG/PNG dentro, limita tamaño: */
+  /* & > img { max-width: 4rem; height: auto; } */
+}
+
+/* ——— Accesibilidad / preferencias ——— */
+@media (prefers-reduced-motion: reduce) {
+  .stateWrap,
+  .stateWrap * {
+    transition: none !important;
+  }
+}
+
+/* ——— Responsive ——— */
+@media (max-width: 720px) {
+  .stateWrap {
+    padding: 1rem; /* 16px */
+    min-height: clamp(12rem, 45vh, 28rem);
+  }
+  .stateTitle {
+    font-size: 1.05rem;
+  }
+  .stateText {
+    font-size: 0.9rem;
+    max-width: 34rem;
+  }
+}
