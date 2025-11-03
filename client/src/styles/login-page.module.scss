@@ -1,0 +1,120 @@
+@import "@styles/reset.css";
+@import "@styles/fonts.css";
+@import "@styles/colors.css";
+
+/* Contenedor principal del login */
+.loginContainer {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base, inherit);
+  background: transparent;
+}
+
+/* Tarjeta central del formulario */
+.loginCard {
+  width: 100%;
+  max-width: 36rem;
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-2);
+}
+
+/* Formulario en layout de columna */
+.loginForm {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Subtítulo o texto descriptivo */
+.loginSubtitle {
+  opacity: 0.9;
+  color: var(--color-text-secondary);
+  text-align: center;
+  font-family: var(--font-family-base, inherit);
+}
+
+/* Input base y sus variantes (usa estilos MUI) */
+.inputRoot {
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  color: var(--input-text);
+  transition: border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  :global(.MuiOutlinedInput-input) {
+    color: var(--input-text);
+    font-family: var(--font-family-base, inherit);
+  }
+
+  // borde visible siempre
+  :global(.MuiOutlinedInput-notchedOutline) {
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--input-border);
+  }
+
+  &:hover :global(.MuiOutlinedInput-notchedOutline) {
+    border-color: var(--input-border-hover);
+  }
+
+  &.Mui-focused :global(.MuiOutlinedInput-notchedOutline) {
+    border-color: var(--input-border-focus);
+  }
+
+  :global(.MuiInputBase-input::placeholder) {
+    color: var(--input-placeholder);
+    opacity: 1;
+  }
+}
+
+/* Etiqueta de campo (label) */
+.inputLabel {
+  color: var(--color-text-muted) !important;
+  font-family: var(--font-family-base, inherit);
+
+  &.Mui-focused {
+    color: var(--brand-primary-400) !important;
+  }
+
+  &.Mui-error {
+    color: var(--error-500) !important;
+  }
+}
+
+/* Texto auxiliar debajo del input */
+.helperText {
+  margin: 0 var(--space-1);
+  color: var(--input-helper);
+  font-family: var(--font-family-base, inherit);
+
+  &.Mui-error {
+    color: var(--input-error);
+  }
+}
+
+/* Icono de mostrar/ocultar contraseña */
+.toggleIcon {
+  color: var(--icon-default);
+  transition: color var(--transition-fast);
+
+  &:hover {
+    color: var(--brand-primary-400);
+  }
+}
+
+/* Botón principal del login */
+.loginSubmit {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transition: background var(--transition-base),
+    transform var(--transition-fast);
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
