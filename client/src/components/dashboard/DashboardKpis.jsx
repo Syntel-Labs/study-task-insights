@@ -13,7 +13,7 @@ export default function DashboardKpis({
     <Grid container spacing={2}>
       <Grid item xs={12} md={4}>
         <Paper className={styles.kpiCard}>
-          <Typography variant="subtitle2" className={styles.kpiLabel}>
+          <Typography variant="h6" className={styles.kpiLabel}>
             Tiempo total (minutos)
           </Typography>
           <Typography variant="body2" className={styles.kpiSubLabel}>
@@ -32,7 +32,7 @@ export default function DashboardKpis({
 
       <Grid item xs={12} md={4}>
         <Paper className={styles.kpiCard}>
-          <Typography variant="subtitle2" className={styles.kpiLabel}>
+          <Typography variant="h6" className={styles.kpiLabel}>
             % de finalización
           </Typography>
           <Typography variant="body2" className={styles.kpiSubLabel}>
@@ -51,7 +51,7 @@ export default function DashboardKpis({
 
       <Grid item xs={12} md={4}>
         <Paper className={styles.kpiCard}>
-          <Typography variant="subtitle2" className={styles.kpiLabel}>
+          <Typography variant="h6" className={styles.kpiLabel}>
             Tareas
           </Typography>
           <Typography variant="body2" className={styles.kpiSubLabel}>
