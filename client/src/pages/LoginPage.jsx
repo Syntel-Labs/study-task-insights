@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { useHealthApi } from "@hooks/api";
 import {
   Container,
   Paper,
@@ -18,6 +19,7 @@ import styles from "@styles/login-page.module.scss";
 
 export default function LoginPage() {
   const { login, loading, isAuthenticated } = useAuth();
+  const { check } = useHealthApi();
   const [secret, setSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [fieldTouched, setFieldTouched] = useState(false);
@@ -64,13 +66,33 @@ export default function LoginPage() {
 
     try {
       setSubmitting(true);
+      try {
+        await check();
+      } catch (e) {
+        const msg =
+          e?.payload?.message ||
+          e?.message ||
+          "Servicio no disponible. Intenta en unos minutos.";
+        Swal.fire("No disponible", msg, "warning");
+        return;
+      }
+
       await login(secret.trim());
       Swal.fire("Acceso concedido", "Inicio de sesión exitoso", "success");
       navigate("/dashboard");
     } catch (err) {
-      const msg =
-        err?.payload?.message || err.message || "Error de autenticación";
-      Swal.fire("Error", msg, "error");
+      // Diferencia 401 (clave incorrecta) del resto
+      if (err?.status === 401) {
+        Swal.fire(
+          "Clave incorrecta",
+          "Verifica la clave e intenta de nuevo.",
+          "error"
+        );
+      } else {
+        const msg =
+          err?.payload?.message || err?.message || "Error de autenticación";
+        Swal.fire("Error", msg, "error");
+      }
     } finally {
       setSubmitting(false);
     }
