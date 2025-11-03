@@ -13,7 +13,7 @@ import { useApi } from "@hooks/useApi";
  * - remove({ ids }): elimina tareas por IDs
  */
 export function useTasksApi() {
-  const { get, post, put, del } = useApi();
+  const { get, post, put, del, request } = useApi();
 
   return React.useMemo(
     () => ({
@@ -22,9 +22,13 @@ export function useTasksApi() {
         get(`${apiPaths.tasks}/${id}`, include ? { include } : undefined),
       create: (payload) => post(apiPaths.tasks, payload),
       update: (arr) => put(apiPaths.tasks, Array.isArray(arr) ? arr : [arr]),
-      remove: ({ ids }) => del(apiPaths.tasks, { ids }),
+      remove: (ids) =>
+        request(apiPaths.tasks, {
+          method: "DELETE",
+          body: { ids },
+        }),
     }),
-    [get, post, put, del]
+    [get, post, put, del, request]
   );
 }
 
