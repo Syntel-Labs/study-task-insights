@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import { buildApiUrl } from "@utils/config";
 
-/* Permite ajustar método, cuerpo, encabezados, formato JSON y query params */
+export function bulkify(input) {
+  return Array.isArray(input) ? input : [input];
+}
+
 export function useApi() {
   const request = useCallback(async (path, options = {}) => {
     const {
@@ -27,8 +30,12 @@ export function useApi() {
             ? JSON.stringify(body)
             : body
           : undefined,
-      credentials: "include", // mantiene sesión con cookie stia_session
+      credentials: "include",
     });
+
+    if (resp.status === 401 || resp.status === 403) {
+      window.dispatchEvent(new CustomEvent("stia:unauthorized"));
+    }
 
     const contentType = resp.headers.get("content-type") || "";
     const data = contentType.includes("application/json")
@@ -45,7 +52,6 @@ export function useApi() {
     return data;
   }, []);
 
-  // atajos REST
   const get = useCallback(
     (path, query) => request(path, { method: "GET", query }),
     [request]
@@ -63,7 +69,7 @@ export function useApi() {
     [request]
   );
   const del = useCallback(
-    (path, query) => request(path, { method: "DELETE", query }),
+    (path, options = {}) => request(path, { method: "DELETE", ...options }),
     [request]
   );
 
