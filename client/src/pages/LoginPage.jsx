@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
@@ -17,13 +17,15 @@ import { useAuth } from "@context/AuthContext.jsx";
 import styles from "@styles/login-page.module.scss";
 
 export default function LoginPage() {
-  const { login, loading } = useAuth();
+  const { login, loading, isAuthenticated } = useAuth();
   const [secret, setSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [fieldTouched, setFieldTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-
+  useEffect(() => {
+    if (isAuthenticated) navigate("/dashboard");
+  }, [isAuthenticated, navigate]);
   const inputRef = useRef(null);
   const isEmptyError = fieldTouched && !secret.trim();
 
@@ -119,6 +121,7 @@ export default function LoginPage() {
                 <InputAdornment position="end">
                   <IconButton
                     aria-label={showSecret ? "Ocultar clave" : "Mostrar clave"}
+                    disabled={submitting || loading}
                     onClick={handleToggleShow}
                     onMouseDown={(e) => e.preventDefault()}
                     edge="end"
