@@ -76,14 +76,14 @@ const buildInclude = (include) => {
 
   const inc = {};
   if (wantsLookups) {
-    inc.taskStatus = true;
-    inc.taskPriority = true;
-    inc.taskType = true;
+    inc.status = true;
+    inc.priority = true;
+    inc.type = true;
     inc.term = true;
   }
   if (wantsTags) {
     inc.tagAssignments = {
-      include: { taskTag: true },
+      include: { tag: true },
     };
   }
   return Object.keys(inc).length ? inc : undefined;
