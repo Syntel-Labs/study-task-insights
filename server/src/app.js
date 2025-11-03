@@ -41,7 +41,7 @@ app.post("/gate/login", (req, res) => {
   res.cookie("stia_session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: hours * 60 * 60 * 1000,
   });
 
