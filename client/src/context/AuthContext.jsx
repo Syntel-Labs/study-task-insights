@@ -7,23 +7,16 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  buildGateUrl,
-  buildApiUrl,
-  session as sessionCfg,
-} from "@utils/config";
+import { buildApiUrl, session as sessionCfg } from "@utils/config";
+import { useGateApi } from "@hooks/api";
 
 const AuthContext = createContext(null);
 
-/**
- * provee el contexto de autenticación para toda la app
- * maneja sesión, login, logout y revalidación automática
- */
+/** proveedor de autenticación */
 export function AuthProvider({ children }) {
+  const { login: gateLogin, logout: gateLogout } = useGateApi();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // timers para revalidar y cortar sesión
   const softTimerRef = useRef(null);
   const hardTimerRef = useRef(null);
 
@@ -38,93 +31,57 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // programa los timers según la duración configurada de sesión
   function scheduleSessionTimers() {
     clearTimers();
-
-    const totalMs = sessionCfg.hours * 60 * 60 * 1000;
-    const softMs = Math.max(10_000, totalMs - sessionCfg.revalidateMs);
-
-    // revalidación un poco antes de expirar
-    softTimerRef.current = setTimeout(() => {
-      refreshSession().catch(() => {});
-    }, softMs);
-
-    // corte duro al expirar
-    hardTimerRef.current = setTimeout(() => {
-      setIsAuthenticated(false);
-      clearTimers();
-    }, totalMs);
+    softTimerRef.current = setTimeout(
+      () => refreshSession({ silent: true }),
+      sessionCfg.softTimeout
+    );
+    hardTimerRef.current = setTimeout(() => logout(), sessionCfg.hardTimeout);
   }
 
-  // verifica la validez de la sesión contra un endpoint protegido
-  const refreshSession = useCallback(async () => {
-    setLoading(true);
+  const refreshSession = useCallback(async (opts = {}) => {
+    const { silent = false } = opts;
+    if (!silent) setLoading(true);
     try {
       const url = buildApiUrl("weekly-productivity", { limit: 1 });
       const resp = await fetch(url, { credentials: "include" });
-
       const ok = resp.ok;
-      setIsAuthenticated(ok);
-
+      setIsAuthenticated((prev) => (prev !== ok ? ok : prev));
       if (ok) scheduleSessionTimers();
       else clearTimers();
     } catch {
       setIsAuthenticated(false);
       clearTimers();
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  // proceso de login con el gateway
   const login = useCallback(
     async (secret) => {
-      const resp = await fetch(buildGateUrl("login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ secret }),
-      });
-
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        const err = new Error(data.message || `HTTP ${resp.status}`);
-        err.status = resp.status;
-        err.payload = data;
-        throw err;
-      }
-
-      // se asume autenticación y se preparan timers
+      await gateLogin({ secret });
       setIsAuthenticated(true);
       scheduleSessionTimers();
-
-      // revalida sin bloquear UI
-      refreshSession().catch(() => {});
+      refreshSession({ silent: true }).catch(() => {});
       return true;
     },
-    [refreshSession]
+    [gateLogin, refreshSession]
   );
 
-  // cierra sesión y limpia timers
   const logout = useCallback(async () => {
     try {
-      await fetch(buildGateUrl("logout"), {
-        method: "POST",
-        credentials: "include",
-      });
+      await gateLogout();
     } finally {
       setIsAuthenticated(false);
       clearTimers();
     }
-  }, []);
+  }, [gateLogout]);
 
-  // al montar, se valida el estado actual de sesión
   useEffect(() => {
     refreshSession();
   }, [refreshSession]);
 
-  // escucha global para invalidar sesión al recibir 401/403
   useEffect(() => {
     function onUnauthorized() {
       setIsAuthenticated(false);
@@ -135,10 +92,9 @@ export function AuthProvider({ children }) {
       window.removeEventListener("stia:unauthorized", onUnauthorized);
   }, []);
 
-  // revalida al recuperar foco o visibilidad
   useEffect(() => {
     function onFocus() {
-      refreshSession().catch(() => {});
+      refreshSession({ silent: true }).catch(() => {});
     }
     function onVisibilityChange() {
       if (document.visibilityState === "visible") onFocus();
@@ -159,7 +115,6 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-/* hook para acceder al contexto de autenticación */
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
