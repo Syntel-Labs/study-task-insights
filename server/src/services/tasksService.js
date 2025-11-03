@@ -60,9 +60,13 @@ const buildWhere = (filters = {}) => {
   }
 
   if (tagId) {
-    where.tagAssignments = {
-      some: { taskTagId: String(tagId) },
-    };
+    const arr = Array.isArray(tagId) ? tagId : [tagId];
+    const ids = [...new Set(arr.map(String))];
+    if (ids.length) {
+      where.tagAssignments = {
+        some: { taskTagId: { in: ids } },
+      };
+    }
   }
 
   return where;
