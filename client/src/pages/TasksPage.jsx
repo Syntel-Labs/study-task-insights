@@ -127,15 +127,47 @@ export default function TasksPage() {
           catalogsApi?.taskTags?.({ limit: 500 }) ?? { items: [] },
         ]);
         if (!cancelled) {
-          setStatuses(st.items || []);
-          setPriorities(
-            (pr.items || [])
-              .slice()
-              .sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0))
-          );
-          setTypes(ty.items || []);
-          setTerms(te.items || []);
-          setTags(tg.items || []);
+          const norm = {
+            statuses: (a = []) =>
+              a.map((x) => ({
+                taskStatusId: x.taskStatusId ?? x.task_status_id ?? x.id,
+                name: x.name ?? x.label ?? x.title,
+                isFinal: x.isFinal ?? x.is_final ?? false,
+              })),
+            priorities: (a = []) =>
+              a.map((x) => ({
+                taskPriorityId: x.taskPriorityId ?? x.task_priority_id ?? x.id,
+                name: x.name ?? x.label ?? x.title,
+                weight: x.weight ?? x.order ?? 0,
+              })),
+            types: (a = []) =>
+              a.map((x) => ({
+                taskTypeId: x.taskTypeId ?? x.task_type_id ?? x.id,
+                name: x.name ?? x.label ?? x.title,
+              })),
+            terms: (a = []) =>
+              a.map((x) => ({
+                termId: x.termId ?? x.term_id ?? x.id,
+                name: x.name ?? x.label ?? x.title,
+              })),
+            tags: (a = []) =>
+              a.map((x) => ({
+                taskTagId: x.taskTagId ?? x.task_tag_id ?? x.id,
+                name: x.name ?? x.label ?? x.title,
+              })),
+          };
+          const S = norm.statuses(st.items || []);
+          const P = norm
+            .priorities(pr.items || [])
+            .sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
+          const Ty = norm.types(ty.items || []);
+          const Te = norm.terms(te.items || []);
+          const Tg = norm.tags(tg.items || []);
+          setStatuses(S);
+          setPriorities(P);
+          setTypes(Ty);
+          setTerms(Te);
+          setTags(Tg);
         }
       } catch {
         // no bloquea render inicial
@@ -361,7 +393,7 @@ export default function TasksPage() {
     if (!tasksApi?.remove) return;
     try {
       setMutating(true);
-      await tasksApi.remove({ ids: [task.taskId || task.task_id] });
+      await tasksApi.remove([task.taskId || task.task_id]);
       Swal.fire("Eliminada", "La tarea fue eliminada.", "success");
       await load();
     } catch (e) {
@@ -431,7 +463,7 @@ export default function TasksPage() {
     if (!tasksApi?.remove) return;
     try {
       setMutating(true);
-      await tasksApi.remove({ ids: Array.from(selectedIds) });
+      await tasksApi.remove(Array.from(selectedIds));
       clearSelection();
       Swal.fire("Eliminadas", "Tareas eliminadas.", "success");
       if (items.length === selectedIds.size && offset > 0)

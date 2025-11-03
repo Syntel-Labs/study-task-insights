@@ -59,6 +59,20 @@ export default function TasksFilters({
     return toIsoDateString(d);
   }, [dueFrom]);
 
+  const getName = (x) =>
+    x?.name ??
+    x?.label ??
+    x?.title ??
+    x?.description ??
+    `#${
+      x?.taskStatusId ??
+      x?.taskPriorityId ??
+      x?.taskTypeId ??
+      x?.termId ??
+      x?.taskTagId ??
+      x?.id
+    }`;
+
   const dueToInput = useMemo(() => {
     if (!dueTo) return "";
     const d = typeof dueTo === "string" ? new Date(dueTo) : dueTo;
@@ -95,6 +109,7 @@ export default function TasksFilters({
           <InputLabel id="filter-status-label">Estado</InputLabel>
           <Select
             labelId="filter-status-label"
+            label="Estado"
             value={statusId ?? ""}
             onChange={(e) => {
               const v = e.target.value;
@@ -104,7 +119,7 @@ export default function TasksFilters({
             <MenuItem value="">(Todos)</MenuItem>
             {statuses.map((s) => (
               <MenuItem key={s.taskStatusId} value={s.taskStatusId}>
-                {s.name}
+                {getName(s)}
               </MenuItem>
             ))}
           </Select>
@@ -115,12 +130,13 @@ export default function TasksFilters({
           <Select
             labelId="filter-priority-label"
             value={priorityId ?? ""}
+            label="Prioridad"
             onChange={(e) => onChangePriority?.(e.target.value || null)}
           >
             <MenuItem value="">(Todas)</MenuItem>
             {prioritiesSorted.map((p) => (
               <MenuItem key={p.taskPriorityId} value={p.taskPriorityId}>
-                {p.name}
+                {getName(p)}
               </MenuItem>
             ))}
           </Select>
@@ -130,13 +146,14 @@ export default function TasksFilters({
           <InputLabel id="filter-type-label">Tipo</InputLabel>
           <Select
             labelId="filter-type-label"
+            label="Tipo"
             value={typeId ?? ""}
             onChange={(e) => onChangeType?.(e.target.value || null)}
           >
             <MenuItem value="">(Todos)</MenuItem>
             {types.map((t) => (
               <MenuItem key={t.taskTypeId} value={t.taskTypeId}>
-                {t.name}
+                {getName(t)}
               </MenuItem>
             ))}
           </Select>
@@ -147,12 +164,13 @@ export default function TasksFilters({
           <Select
             labelId="filter-term-label"
             value={termId ?? ""}
+            label="Término"
             onChange={(e) => onChangeTerm?.(e.target.value || null)}
           >
             <MenuItem value="">(Todos)</MenuItem>
             {terms.map((t) => (
               <MenuItem key={t.termId} value={t.termId}>
-                {t.name}
+                {getName(t)}
               </MenuItem>
             ))}
           </Select>

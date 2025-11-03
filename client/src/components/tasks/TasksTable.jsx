@@ -58,28 +58,42 @@ export default function TasksTable({
     [selectedIds]
   );
 
+  const getName = (x) =>
+    x?.name ??
+    x?.label ??
+    x?.title ??
+    x?.description ??
+    `#${
+      x?.taskTagId ??
+      x?.taskStatusId ??
+      x?.taskPriorityId ??
+      x?.taskTypeId ??
+      x?.termId ??
+      x?.id
+    }`;
+
   // Mapas para fallback cuando include no trae objetos anidados
   const mStatus = useMemo(() => {
     const m = new Map();
-    statuses.forEach((s) => m.set(s.taskStatusId, s));
+    statuses.forEach((s) => m.set(String(s.taskStatusId), s));
     return m;
   }, [statuses]);
 
   const mPriority = useMemo(() => {
     const m = new Map();
-    priorities.forEach((p) => m.set(p.taskPriorityId, p));
+    priorities.forEach((p) => m.set(String(p.taskPriorityId), p));
     return m;
   }, [priorities]);
 
   const mType = useMemo(() => {
     const m = new Map();
-    types.forEach((t) => m.set(t.taskTypeId, t));
+    types.forEach((t) => m.set(String(t.taskTypeId), t));
     return m;
   }, [types]);
 
   const mTag = useMemo(() => {
     const m = new Map();
-    tagsCatalog.forEach((t) => m.set(t.taskTagId, t));
+    tagsCatalog.forEach((t) => m.set(String(t.taskTagId), t));
     return m;
   }, [tagsCatalog]);
 
@@ -150,39 +164,41 @@ export default function TasksTable({
             // Fallbacks por ID
             const status =
               statusObj ||
-              (typeof task.taskStatusId === "number"
-                ? mStatus.get(task.taskStatusId)
-                : null) ||
-              (typeof task.task_status_id === "number"
-                ? mStatus.get(task.task_status_id)
-                : null);
+              mStatus.get(String(task.taskStatusId ?? task.task_status_id)) ||
+              null;
 
             const priority =
               priorityObj ||
-              (typeof task.taskPriorityId === "number"
-                ? mPriority.get(task.taskPriorityId)
-                : null) ||
-              (typeof task.task_priority_id === "number"
-                ? mPriority.get(task.task_priority_id)
-                : null);
+              mPriority.get(
+                String(task.taskPriorityId ?? task.task_priority_id)
+              ) ||
+              null;
 
             const type =
               typeObj ||
-              (typeof task.taskTypeId === "number"
-                ? mType.get(task.taskTypeId)
-                : null) ||
-              (typeof task.task_type_id === "number"
-                ? mType.get(task.task_type_id)
-                : null);
+              mType.get(String(task.taskTypeId ?? task.task_type_id)) ||
+              null;
 
             const tagsArray =
               task.task_tags ||
               task.tags ||
               (Array.isArray(task.taskTagIds)
-                ? task.taskTagIds.map((tid) => mTag.get(tid)).filter(Boolean)
+                ? task.taskTagIds
+                    .map((tid) => mTag.get(String(tid)))
+                    .filter(Boolean)
                 : Array.isArray(task.task_tag_ids)
-                ? task.task_tag_ids.map((tid) => mTag.get(tid)).filter(Boolean)
+                ? task.task_tag_ids
+                    .map((tid) => mTag.get(String(tid)))
+                    .filter(Boolean)
                 : []);
+
+            const statusN = status && { ...status, name: getName(status) };
+            const priorityN = priority && {
+              ...priority,
+              name: getName(priority),
+            };
+            const typeN = type && { ...type, name: getName(type) };
+            const tagsN = tagsArray.map((t) => ({ ...t, name: getName(t) }));
 
             const isCompleted = !!task.completed_at || !!task.completedAt;
             const isArchived = !!task.archived_at || !!task.archivedAt;
@@ -221,23 +237,23 @@ export default function TasksTable({
                 </td>
 
                 <td className={styles.cellPriority}>
-                  {priority ? (
-                    <PriorityChip priority={priority} />
+                  {priorityN ? (
+                    <PriorityChip priority={priorityN} />
                   ) : (
                     <span className={styles.dim}>—</span>
                   )}
                 </td>
 
                 <td className={styles.cellType}>
-                  {type ? (
-                    <TypeChip type={type} />
+                  {typeN ? (
+                    <TypeChip type={typeN} />
                   ) : (
                     <span className={styles.dim}>—</span>
                   )}
                 </td>
 
                 <td className={styles.cellTags}>
-                  <TagChips tags={tagsArray} />
+                  <TagChips tags={tagsN} />
                 </td>
 
                 <td className={styles.cellDue}>

@@ -56,6 +56,19 @@ export default function TaskDrawer({
   onAfterTagsChange,
 }) {
   const navigate = useNavigate();
+  const getName = (x) =>
+    x?.name ??
+    x?.label ??
+    x?.title ??
+    x?.description ??
+    `#${
+      x?.taskStatusId ??
+      x?.taskPriorityId ??
+      x?.taskTypeId ??
+      x?.termId ??
+      x?.taskTagId ??
+      x?.id
+    }`;
 
   const norm = React.useMemo(() => {
     const t = task || {};
@@ -64,7 +77,7 @@ export default function TaskDrawer({
     const status = t.taskStatus ?? t.task_status ?? null;
     const priority = t.taskPriority ?? t.task_priority ?? null;
     const type = t.taskType ?? t.task_type ?? null;
-    const term = t.term ?? t.term ?? null;
+    const term = t.term ?? t.term_obj ?? null;
 
     // Tags seleccionados
     const tagItems = t.task_tags ?? t.tags ?? [];
@@ -254,13 +267,13 @@ export default function TaskDrawer({
               <FormControl fullWidth error={!!errors.taskStatusId}>
                 <InputLabel id="status-label">Estado</InputLabel>
                 <Select
-                  labelId="status-label"
+                  label="Estado"
                   value={form.taskStatusId}
                   onChange={(e) => setField("taskStatusId", e.target.value)}
                 >
                   {statuses.map((s) => (
                     <MenuItem key={s.taskStatusId} value={s.taskStatusId}>
-                      {s.name}
+                      {getName(s)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -268,13 +281,13 @@ export default function TaskDrawer({
               <FormControl fullWidth error={!!errors.taskPriorityId}>
                 <InputLabel id="priority-label">Prioridad</InputLabel>
                 <Select
-                  labelId="priority-label"
+                  label="Prioridad"
                   value={form.taskPriorityId}
                   onChange={(e) => setField("taskPriorityId", e.target.value)}
                 >
                   {priorities.map((p) => (
                     <MenuItem key={p.taskPriorityId} value={p.taskPriorityId}>
-                      {p.name}
+                      {getName(p)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -282,13 +295,13 @@ export default function TaskDrawer({
               <FormControl fullWidth error={!!errors.taskTypeId}>
                 <InputLabel id="type-label">Tipo</InputLabel>
                 <Select
-                  labelId="type-label"
+                  label="Tipo"
                   value={form.taskTypeId}
                   onChange={(e) => setField("taskTypeId", e.target.value)}
                 >
                   {types.map((t) => (
                     <MenuItem key={t.taskTypeId} value={t.taskTypeId}>
-                      {t.name}
+                      {getName(t)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -299,14 +312,14 @@ export default function TaskDrawer({
               <FormControl fullWidth>
                 <InputLabel id="term-label">Término</InputLabel>
                 <Select
-                  labelId="term-label"
+                  label="Término"
                   value={form.termId || ""}
                   onChange={(e) => setField("termId", e.target.value)}
                 >
                   <MenuItem value="">(Ninguno)</MenuItem>
                   {terms.map((t) => (
                     <MenuItem key={t.termId} value={t.termId}>
-                      {t.name}
+                      {getName(t)}
                     </MenuItem>
                   ))}
                 </Select>
