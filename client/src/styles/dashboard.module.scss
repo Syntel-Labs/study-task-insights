@@ -1,0 +1,164 @@
+@import "@styles/colors.css";
+@import "@styles/fonts.css";
+
+.dashboardRoot {
+  font-family: var(--font-family-base);
+  color: var(--color-text-primary);
+}
+
+/* Header superior */
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-family: var(--font-family-heading);
+  color: var(--color-primary);
+}
+
+.headerRight {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.refreshGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.refreshBtn {
+  background: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+  text-transform: none !important;
+  border-radius: var(--radius-sm) !important;
+  &:hover {
+    background: var(--btn-primary-bg-hover) !important;
+  }
+}
+
+/* KPI cards */
+.kpiCard {
+  padding: var(--space-4) !important;
+  background: var(--color-surface) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-1) !important;
+  border: 1px solid var(--color-border);
+}
+
+.kpiLabel {
+  color: var(--color-text-secondary);
+}
+.kpiSubLabel {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+.kpiValue {
+  margin-bottom: var(--space-2);
+}
+
+.progressPrimary,
+.progressSuccess,
+.progressAccent {
+  height: 8px !important;
+  border-radius: var(--radius-sm);
+  background: var(--neutral-200) !important;
+}
+.progressPrimary :global(.MuiLinearProgress-bar) {
+  background: var(--brand-primary-400);
+}
+.progressSuccess :global(.MuiLinearProgress-bar) {
+  background: var(--success-500);
+}
+.progressAccent :global(.MuiLinearProgress-bar) {
+  background: var(--accent-warm);
+}
+
+/* Tendencia: cabecera de controles */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chartButtons {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.iconBtn {
+  color: var(--icon-default) !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-sm) !important;
+  &:hover {
+    background: var(--color-surface-2) !important;
+  }
+}
+
+/* Fila inferior */
+.splitRow {
+  align-items: stretch;
+}
+
+/* Tarjetas */
+.chartCard,
+.tableCard {
+  padding: var(--space-3) !important;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  border: 1px solid var(--color-border);
+  height: 100%;
+}
+
+/* Tabla con scroll interno si crece */
+.tableTitle {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.tableWrapper {
+  max-height: 390px;
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.95rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-divider);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.table tr:hover td {
+  background: var(--color-surface-2);
+}
+
+.emptyCell {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-5) !important;
+}

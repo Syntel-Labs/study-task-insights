@@ -1,0 +1,77 @@
+@import "@styles/colors.css";
+@import "@styles/fonts.css";
+
+/* Raíz del layout */
+.layoutRoot {
+  min-height: 100dvh;
+  background: var(--color-background);
+}
+
+/* AppBar con superficie clara y borde inferior sutil */
+.appBar {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border-bottom: 1px solid var(--color-divider);
+  box-shadow: var(--shadow-1) !important;
+}
+
+.toolbar {
+  gap: var(--space-4);
+  min-height: 64px;
+}
+
+/* Marca: usa la fuente de headings y color primario */
+.brand {
+  font-family: var(--font-family-heading, var(--font-family-base));
+  font-weight: 700 !important;
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+}
+
+/* Navegación */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Enlaces: estados activo/hover con tokens */
+.link,
+.linkActive {
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-base);
+  color: var(--color-text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.link:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
+
+.linkActive {
+  background: var(--color-primary-weak);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Botón de salir */
+.logoutBtn {
+  background: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+  text-transform: none !important;
+  border-radius: var(--radius-sm) !important;
+  padding: var(--space-2) var(--space-3) !important;
+  box-shadow: var(--shadow-1) !important;
+
+  &:hover {
+    background: var(--btn-primary-bg-hover) !important;
+  }
+}
+
+/* Contenido bajo el AppBar */
+.content {
+  padding: calc(64px + var(--space-5)) var(--space-5) var(--space-6);
+}

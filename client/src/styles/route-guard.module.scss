@@ -1,0 +1,10 @@
+@import "@styles/colors.css";
+@import "@styles/fonts.css";
+
+.guardContainer {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
