@@ -63,6 +63,7 @@ export default function TasksHeader({
         spacing={2}
         alignItems="center"
         className={styles.headerRight}
+        sx={{ flexWrap: "nowrap" }}
       >
         <TextField
           size="small"
@@ -71,6 +72,7 @@ export default function TasksHeader({
           value={q}
           onChange={(e) => onChangeQuery?.(e.target.value)}
           className={styles.searchInput}
+          sx={{ flex: 1, minWidth: 0 }}
           InputProps={{
             sx: { bgcolor: "var(--input-bg)", color: "var(--input-text)" },
           }}

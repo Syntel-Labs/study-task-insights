@@ -50,7 +50,7 @@ export default function TaskModal({
   const norm = React.useMemo(() => {
     const t = initialTask || {};
     return {
-      d: t.id ?? t.taskId ?? t.task_id ?? null,
+      id: t.id ?? t.taskId ?? t.task_id ?? null,
       title: t.title || "",
       description: t.description || "",
       taskStatusId:
@@ -146,7 +146,7 @@ export default function TaskModal({
         : 0,
       tagIds: Array.isArray(form.tagIds) ? form.tagIds : [],
     };
-
+    console.log("[TaskModal] submit payload:", payload);
     onSubmit?.(payload);
   }
 
