@@ -11,7 +11,7 @@ export default function DashboardKpis({
 }) {
   return (
     <Grid container spacing={2}>
-      <Grid item xs={12} md={4}>
+      <Grid xs={12} md={4}>
         <Paper className={styles.kpiCard}>
           <Typography variant="h6" className={styles.kpiLabel}>
             Tiempo total (minutos)
@@ -30,7 +30,7 @@ export default function DashboardKpis({
         </Paper>
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      <Grid xs={12} md={4}>
         <Paper className={styles.kpiCard}>
           <Typography variant="h6" className={styles.kpiLabel}>
             % de finalización
@@ -49,7 +49,7 @@ export default function DashboardKpis({
         </Paper>
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      <Grid xs={12} md={4}>
         <Paper className={styles.kpiCard}>
           <Typography variant="h6" className={styles.kpiLabel}>
             Tareas
