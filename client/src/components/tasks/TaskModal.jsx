@@ -13,6 +13,7 @@ import {
   TextField,
 } from "@mui/material";
 import { toIsoDateString } from "@utils/dates";
+import TagSelector from "./TagSelector.jsx";
 import styles from "@styles/tasks.module.scss";
 
 /**
@@ -42,23 +43,40 @@ export default function TaskModal({
   priorities = [],
   types = [],
   terms = [],
+  tags = [],
   onClose,
   onSubmit,
 }) {
   const norm = React.useMemo(() => {
     const t = initialTask || {};
     return {
+      d: t.id ?? t.taskId ?? t.task_id ?? null,
       title: t.title || "",
       description: t.description || "",
       taskStatusId:
-        t.taskStatusId ?? t.task_status_id ?? t.task_status?.taskStatusId ?? "",
+        t.taskStatusId ??
+        t.task_status_id ??
+        t.task_status?.taskStatusId ??
+        t.status?.taskStatusId ??
+        "",
       taskPriorityId:
         t.taskPriorityId ??
         t.task_priority_id ??
         t.task_priority?.taskPriorityId ??
+        t.priority?.taskPriorityId ??
         "",
       taskTypeId:
-        t.taskTypeId ?? t.task_type_id ?? t.task_type?.taskTypeId ?? "",
+        t.taskTypeId ??
+        t.task_type_id ??
+        t.task_type?.taskTypeId ??
+        t.type?.taskTypeId ??
+        "",
+      tagIds:
+        t.tagIds ??
+        (t.task_tags || t.tags || []).map(
+          (x) => x.taskTagId ?? x.task_tag_id
+        ) ??
+        [],
       termId: t.termId ?? t.term_id ?? t.term?.termId ?? "",
       dueAt: t.dueAt ?? t.due_at ?? null,
       estimatedMin: t.estimatedMin ?? t.estimated_min ?? 0,
@@ -99,10 +117,12 @@ export default function TaskModal({
   // Valida campos requeridos
   function validate() {
     const next = {};
-    if (!form.title.trim()) next.title = "Obligatorio";
-    if (!form.taskStatusId) next.taskStatusId = "Obligatorio";
-    if (!form.taskPriorityId) next.taskPriorityId = "Obligatorio";
-    if (!form.taskTypeId) next.taskTypeId = "Obligatorio";
+    const isEdit = !!form.id;
+    if (!isEdit) {
+      if (!form.taskStatusId) next.taskStatusId = "Obligatorio";
+      if (!form.taskPriorityId) next.taskPriorityId = "Obligatorio";
+      if (!form.taskTypeId) next.taskTypeId = "Obligatorio";
+    }
     const hasErrors = Object.keys(next).length > 0;
     setErrors(next);
     return !hasErrors;
@@ -113,6 +133,7 @@ export default function TaskModal({
     if (!validate()) return;
 
     const payload = {
+      ...(form.id ? { taskId: form.id } : {}),
       title: form.title.trim(),
       description: form.description?.trim() || null,
       taskStatusId: form.taskStatusId,
@@ -123,6 +144,7 @@ export default function TaskModal({
       estimatedMin: Number.isFinite(Number(form.estimatedMin))
         ? Number(form.estimatedMin)
         : 0,
+      tagIds: Array.isArray(form.tagIds) ? form.tagIds : [],
     };
 
     onSubmit?.(payload);
@@ -258,6 +280,15 @@ export default function TaskModal({
                 onChange={(e) => setField("estimatedMin", e.target.value)}
                 inputProps={{ min: 0, step: 1 }}
                 fullWidth
+              />
+            </Stack>
+            {/* Tags */}
+            <Stack spacing={1}>
+              <TagSelector
+                allTags={tags}
+                selectedIds={form.tagIds}
+                onChange={(ids) => setForm((f) => ({ ...f, tagIds: ids }))}
+                disabled={loading}
               />
             </Stack>
           </Stack>
