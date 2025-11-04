@@ -12,8 +12,8 @@
   --font-roboto: "Roboto", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   --font-raleway: "Raleway", serif;
 
-  --font-family-base: var(--font-agu-display);   /* texto y formularios (legible) */
-  --font-family-heading: var(--font-agu-display); /* títulos/branding */
+  --font-family-base: var(--font-raleway);   /* texto y formularios (legible) */
+  --font-family-heading: var(--font-raleway); /* títulos/branding */
 }
 
 /* Aplicación global*/
