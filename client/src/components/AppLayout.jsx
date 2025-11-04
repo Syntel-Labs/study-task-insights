@@ -42,23 +42,7 @@ export default function AppLayout() {
             >
               Tareas
             </NavLink>
-            <NavLink
-              to="/sessions"
-              className={({ isActive }) =>
-                isActive ? styles.linkActive : styles.link
-              }
-            >
-              Sesiones
-            </NavLink>
-            <NavLink
-              to="/catalogs"
-              className={({ isActive }) =>
-                isActive ? styles.linkActive : styles.link
-              }
-              title="Administrar catálogos: términos, estados, prioridades, tipos, etiquetas"
-            >
-              Catálogos
-            </NavLink>
+
             <NavLink
               to="/llm"
               className={({ isActive }) =>
@@ -66,14 +50,6 @@ export default function AppLayout() {
               }
             >
               LLM
-            </NavLink>
-            <NavLink
-              to="/import"
-              className={({ isActive }) =>
-                isActive ? styles.linkActive : styles.link
-              }
-            >
-              Importar
             </NavLink>
           </nav>
 
