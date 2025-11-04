@@ -344,32 +344,33 @@ export default function TasksPage() {
     setDDueTo(null);
   }
 
-  // acciones de crear y actualizar
   async function handleCreate(payload) {
     if (!tasksApi?.create) return;
     try {
       setMutating(true);
-      console.log("[TasksPage] CREATE payload:", payload);
+      const { tagIds = [], ...data } = payload;
 
-      const res = await tasksApi.create(payload);
+      console.log("[TasksPage] CREATE data (sin tagIds):", data);
+
+      const res = await tasksApi.create(data);
       const newId = res?.item?.taskId ?? res?.item?.id;
-      if (newId && payload.tagIds?.length && tagAssignApi?.add) {
+
+      if (newId && tagIds.length && tagAssignApi?.add) {
         await Promise.all(
-          payload.tagIds.map((id) =>
-            tagAssignApi.add({ taskId: newId, taskTagId: id })
-          )
+          tagIds.map((id) => tagAssignApi.add({ taskId: newId, taskTagId: id }))
         );
       }
+
       setCreateOpen(false);
       await Swal.fire(
         "Creada",
         "La tarea fue creada correctamente.",
         "success"
       );
-
       setOffset(0);
       await load();
     } catch (e) {
+      console.error("[TasksPage] CREATE error:", e);
       setCreateOpen(false);
       await Swal.fire(
         "Error",
@@ -510,12 +511,18 @@ export default function TasksPage() {
       setMutating(false);
     }
   }
-
   async function deleteOne(task) {
     if (!tasksApi?.remove) return;
     try {
       setMutating(true);
-      await tasksApi.remove([task.taskId || task.task_id]);
+
+      const rawId = task?.id ?? task?.taskId ?? task?.task_id ?? "";
+      const id = String(rawId).trim();
+
+      const isUuid = /^[0-9a-fA-F-]{36}$/.test(id);
+      if (!isUuid) throw new Error(`taskId inválido para delete: "${id}"`);
+
+      await tasksApi.remove([id]);
       Swal.fire("Eliminada", "La tarea fue eliminada.", "success");
       await load();
     } catch (e) {
