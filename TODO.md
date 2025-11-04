@@ -38,24 +38,24 @@
 
 ## 5️⃣ Frontend
 
-* [ ] Idear vistas principales y componentes React:
+* [x] Idear vistas principales y componentes React:
 
   * Lista de tareas
   * Formulario de nueva tarea
   * Vista de análisis semanal (mock visual)
-* [ ] Conectar **frontend con backend** mediante fetch/axios.
-* [ ] Implementar **hooks y utils** para manejar estados y llamadas API.
-* [ ] Configurar **Vite + React** con alias y hot reload.
+* [x] Conectar **frontend con backend** mediante fetch/axios.
+* [x] Implementar **hooks y utils** para manejar estados y llamadas API.
+* [x] Configurar **Vite + React** con alias y hot reload.
 
 ## 6️⃣ Variables de entorno y configuración
 
-* [ ] `.env.example` para frontend y backend con variables mínimas necesarias.
-* [ ] Configuración de puerto, base de datos y secretos.
+* [x] `.env.example` para frontend y backend con variables mínimas necesarias.
+* [x] Configuración de puerto, base de datos y secretos.
 
 ## 7️⃣ Dockerización y despliegue
 
-* [ ] Crear **Dockerfile** para backend y frontend.
-* [ ] Crear **docker-compose** para levantar backend + frontend + DB local.
+* [x] Crear **Dockerfile** para backend y frontend.
+* [x] Crear **docker-compose** para levantar backend + frontend + DB local.
 * [ ] Planear despliegue en hosting gratuito o cloud (Railway, Render, Fly.io, etc).
 * [ ] Configurar **database deployment** (PostgreSQL).
 
