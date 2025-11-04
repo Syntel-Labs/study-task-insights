@@ -1,0 +1,17 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-http://localhost:3000}
+        VITE_API_BASE_PATH: ${VITE_API_BASE_PATH:-/api}
+        VITE_HEALTH_PATH: ${VITE_HEALTH_PATH:-/healthz}
+        VITE_GATE_BASE_PATH: ${VITE_GATE_BASE_PATH:-/gate}
+        VITE_SESSION_HOURS: ${VITE_SESSION_HOURS:-1000}
+        VITE_SESSION_REVALIDATE_MARGIN_MIN: ${VITE_SESSION_REVALIDATE_MARGIN_MIN:-2}
+    ports:
+      - "8080:80"
+    environment:
+      - TZ=America/Guatemala
+    restart: unless-stopped
