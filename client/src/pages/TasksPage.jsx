@@ -13,14 +13,22 @@ import ErrorState from "@components/tasks/ErrorState.jsx";
 import TaskModal from "@components/tasks/TaskModal.jsx";
 import TaskDrawer from "@components/tasks/TaskDrawer.jsx";
 
-import { useTasksApi, useCatalogsApi } from "@utils/apiResources";
-import { toIsoDateString } from "@utils/dates";
+import { useTasksApi } from "@hooks/api/tasks";
+import { useTaskTagAssignmentsApi } from "@hooks/api/taskTagAssignments";
+import { useCatalogsCrud } from "@hooks/api/catalogs";
 
 /** página de tareas: lista, filtros, paginación, acciones masivas y detalle/modal */
 export default function TasksPage() {
   // apis
-  const tasksApi = useTasksApi?.();
-  const catalogsApi = useCatalogsApi?.();
+  const tasksApi = useTasksApi();
+  const tagAssignApi = useTaskTagAssignmentsApi();
+  const {
+    taskStatuses,
+    taskPriorities,
+    taskTypes,
+    terms: termsApi,
+    taskTags,
+  } = useCatalogsCrud();
 
   // estado de datos
   const [items, setItems] = React.useState([]);
@@ -34,6 +42,7 @@ export default function TasksPage() {
   const [types, setTypes] = React.useState([]);
   const [terms, setTerms] = React.useState([]);
   const [tags, setTags] = React.useState([]);
+  const [tagAssignments, setTagAssignments] = React.useState([]);
 
   // parámetros de consulta
   const [q, setQ] = React.useState("");
@@ -114,69 +123,73 @@ export default function TasksPage() {
     });
   }
 
-  // carga catálogos una vez
   React.useEffect(() => {
     let cancelled = false;
+
+    const humanize = (code = "") =>
+      String(code)
+        .replace(/[_\-]+/g, " ")
+        .replace(/\b\w/g, (m) => m.toUpperCase())
+        .trim();
+
     (async () => {
       try {
-        const [st, pr, ty, te, tg] = await Promise.all([
-          catalogsApi?.taskStatuses?.({ limit: 200 }) ?? { items: [] },
-          catalogsApi?.taskPriorities?.({ limit: 200 }) ?? { items: [] },
-          catalogsApi?.taskTypes?.({ limit: 200 }) ?? { items: [] },
-          catalogsApi?.terms?.({ limit: 200 }) ?? { items: [] },
-          catalogsApi?.taskTags?.({ limit: 500 }) ?? { items: [] },
+        const [S, P, T, Te, Tg] = await Promise.all([
+          taskStatuses.list({ limit: 200 }),
+          taskPriorities.list({ limit: 200 }),
+          taskTypes.list({ limit: 200 }),
+          termsApi.list({ limit: 200 }),
+          taskTags.list({ limit: 500 }),
         ]);
-        if (!cancelled) {
-          const norm = {
-            statuses: (a = []) =>
-              a.map((x) => ({
-                taskStatusId: x.taskStatusId ?? x.task_status_id ?? x.id,
-                name: x.name ?? x.label ?? x.title,
-                isFinal: x.isFinal ?? x.is_final ?? false,
-              })),
-            priorities: (a = []) =>
-              a.map((x) => ({
-                taskPriorityId: x.taskPriorityId ?? x.task_priority_id ?? x.id,
-                name: x.name ?? x.label ?? x.title,
-                weight: x.weight ?? x.order ?? 0,
-              })),
-            types: (a = []) =>
-              a.map((x) => ({
-                taskTypeId: x.taskTypeId ?? x.task_type_id ?? x.id,
-                name: x.name ?? x.label ?? x.title,
-              })),
-            terms: (a = []) =>
-              a.map((x) => ({
-                termId: x.termId ?? x.term_id ?? x.id,
-                name: x.name ?? x.label ?? x.title,
-              })),
-            tags: (a = []) =>
-              a.map((x) => ({
-                taskTagId: x.taskTagId ?? x.task_tag_id ?? x.id,
-                name: x.name ?? x.label ?? x.title,
-              })),
-          };
-          const S = norm.statuses(st.items || []);
-          const P = norm
-            .priorities(pr.items || [])
-            .sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
-          const Ty = norm.types(ty.items || []);
-          const Te = norm.terms(te.items || []);
-          const Tg = norm.tags(tg.items || []);
-          setStatuses(S);
-          setPriorities(P);
-          setTypes(Ty);
-          setTerms(Te);
-          setTags(Tg);
-        }
-      } catch {
-        // no bloquea render inicial
-      }
+
+        if (cancelled) return;
+
+        // normaliza catálogos con 'name' derivado de 'code'
+        const normStatuses = (S.items || []).map((x) => ({
+          taskStatusId: x.taskStatusId,
+          code: x.code,
+          name: humanize(x.code), // ← crea 'name'
+          isFinal: !!x.isFinal,
+        }));
+
+        const normPriorities = (P.items || [])
+          .map((x) => ({
+            taskPriorityId: x.taskPriorityId,
+            code: x.code,
+            name: humanize(x.code),
+            weight: Number(x.weight ?? 0),
+          }))
+          .sort((a, b) => a.weight - b.weight);
+
+        const normTypes = (T.items || []).map((x) => ({
+          taskTypeId: x.taskTypeId,
+          code: x.code,
+          name: humanize(x.code),
+        }));
+
+        const normTerms = (Te.items || []).map((x) => ({
+          termId: x.termId,
+          name: x.name ?? humanize(x.code ?? ""),
+        }));
+
+        const normTags = (Tg.items || []).map((x) => ({
+          taskTagId: x.taskTagId,
+          name: x.name,
+          color: x.color,
+        }));
+
+        setStatuses(normStatuses);
+        setPriorities(normPriorities);
+        setTypes(normTypes);
+        setTerms(normTerms);
+        setTags(normTags);
+      } catch {}
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [catalogsApi]);
+  }, [taskStatuses, taskPriorities, taskTypes, termsApi, taskTags]);
 
   // construye query para API según filtros y paginación
   const query = React.useMemo(() => {
@@ -219,18 +232,66 @@ export default function TasksPage() {
     setLoading(true);
     setError("");
     try {
-      const resp = await tasksApi.list(query);
-      setItems(resp?.items ?? []);
+      const [resp, assignsResp] = await Promise.all([
+        tasksApi.list(query),
+        tagAssignApi.list({ limit: 10000 }),
+      ]);
+
+      const baseItems = resp?.items ?? [];
+      const assigns = assignsResp?.items ?? [];
+
+      const byTask = new Map();
+      for (const a of assigns) {
+        const taskId = a.taskId ?? a.task_id;
+        const tagId = a.taskTagId ?? a.task_tag_id;
+        if (!taskId || !tagId) continue;
+        (byTask.get(taskId) || byTask.set(taskId, []).get(taskId)).push(tagId);
+      }
+
+      // Mapas de referencia usando keys reales
+      const mapStatus = new Map(statuses.map((s) => [s.taskStatusId, s]));
+      const mapPriority = new Map(priorities.map((p) => [p.taskPriorityId, p]));
+      const mapType = new Map(types.map((t) => [t.taskTypeId, t]));
+      const mapTag = new Map(tags.map((t) => [t.taskTagId, t]));
+
+      const viewItems = baseItems.map((row) => {
+        const id = row.taskId ?? row.task_id;
+        const statusId = row.taskStatusId ?? row.task_status_id;
+        const priorityId = row.taskPriorityId ?? row.task_priority_id;
+        const typeId = row.taskTypeId ?? row.task_type_id;
+        const tagIds =
+          row.taskTagIds ?? row.task_tag_ids ?? byTask.get(id) ?? [];
+
+        return {
+          id,
+          title: row.title,
+          description: row.description ?? "",
+          dueAt: row.dueAt ?? row.due_at ?? null,
+          estimatedMin: row.estimatedMin ?? row.estimated_min ?? 0,
+          actualMin: row.actualMin ?? row.actual_min ?? null,
+          completedAt: row.completedAt ?? row.completed_at ?? null,
+          archivedAt: row.archivedAt ?? row.archived_at ?? null,
+
+          status: mapStatus.get(statusId) || null,
+          priority: mapPriority.get(priorityId) || null,
+          type: mapType.get(typeId) || null,
+          tags: tagIds.map((tid) => mapTag.get(tid)).filter(Boolean),
+        };
+      });
+
+      setItems(viewItems);
       setTotal(resp?.total ?? 0);
+      console.log("[TASK] viewItems[0]:", viewItems[0]);
     } catch (e) {
       setError(e?.payload?.message || e?.message || "Error al cargar tareas");
     } finally {
       setLoading(false);
     }
   }
+
   React.useEffect(() => {
     load();
-  }, [query]);
+  }, [query, statuses, priorities, types, tags]);
 
   // helpers de selección
   function clearSelection() {
@@ -246,7 +307,7 @@ export default function TasksPage() {
   }
   function toggleSelectAll(checked) {
     if (!checked) return clearSelection();
-    setSelectedIds(new Set(items.map((t) => t.taskId || t.task_id)));
+    setSelectedIds(new Set(items.map((t) => t.id)));
   }
 
   // orden
@@ -288,13 +349,29 @@ export default function TasksPage() {
     if (!tasksApi?.create) return;
     try {
       setMutating(true);
-      await tasksApi.create(payload);
+      console.log("[TasksPage] CREATE payload:", payload);
+
+      const res = await tasksApi.create(payload);
+      const newId = res?.item?.taskId ?? res?.item?.id;
+      if (newId && payload.tagIds?.length && tagAssignApi?.add) {
+        await Promise.all(
+          payload.tagIds.map((id) =>
+            tagAssignApi.add({ taskId: newId, taskTagId: id })
+          )
+        );
+      }
       setCreateOpen(false);
-      Swal.fire("Creada", "La tarea fue creada correctamente.", "success");
+      await Swal.fire(
+        "Creada",
+        "La tarea fue creada correctamente.",
+        "success"
+      );
+
       setOffset(0);
       await load();
     } catch (e) {
-      Swal.fire(
+      setCreateOpen(false);
+      await Swal.fire(
         "Error",
         e?.payload?.message || e?.message || "No se pudo crear",
         "error"
@@ -311,12 +388,57 @@ export default function TasksPage() {
     if (!tasksApi?.update) return;
     try {
       setMutating(true);
-      await tasksApi.update([payload]);
+
+      // dterminar el ID
+      const taskId =
+        payload.taskId ??
+        editingTask?.id ??
+        editingTask?.taskId ??
+        editingTask?.task_id;
+
+      if (!taskId || typeof taskId !== "string") {
+        throw new Error("No se pudo determinar taskId para update");
+      }
+
+      // mapear por anidación
+      const data = {};
+      if (payload.title !== undefined) data.title = payload.title;
+      if (payload.description !== undefined)
+        data.description = payload.description ?? null;
+      if (payload.dueAt !== undefined) data.dueAt = payload.dueAt;
+      if (payload.estimatedMin !== undefined)
+        data.estimatedMin = payload.estimatedMin;
+
+      if (payload.taskStatusId !== undefined) {
+        data.status = {
+          connect: { taskStatusId: Number(payload.taskStatusId) },
+        };
+      }
+      if (payload.taskPriorityId !== undefined) {
+        data.priority = {
+          connect: { taskPriorityId: Number(payload.taskPriorityId) },
+        };
+      }
+      if (payload.taskTypeId !== undefined) {
+        data.type = { connect: { taskTypeId: Number(payload.taskTypeId) } };
+      }
+      if (payload.termId !== undefined) {
+        data.term =
+          payload.termId === null || payload.termId === ""
+            ? { disconnect: true }
+            : { connect: { termId: Number(payload.termId) } };
+      }
+
+      console.log("[TasksPage] UPDATE prisma-shaped:", { taskId, ...data });
+
+      await tasksApi.update([{ taskId, ...data }]);
       setEditingTask(null);
-      Swal.fire("Guardado", "Cambios aplicados.", "success");
+      await Swal.fire("Guardado", "Cambios aplicados.", "success");
       await load();
     } catch (e) {
-      Swal.fire(
+      setEditingTask(null);
+      console.error("[TasksPage] UPDATE error:", e);
+      await Swal.fire(
         "Error",
         e?.payload?.message || e?.message || "No se pudo guardar",
         "error"
@@ -338,7 +460,7 @@ export default function TasksPage() {
       setMutating(true);
       const nowIso = new Date().toISOString();
       const payload = {
-        taskId: task.taskId || task.task_id,
+        taskId: task.id,
         taskStatusId:
           (task.taskStatus || task.task_status)?.taskStatusId ||
           task.taskStatusId ||
@@ -372,7 +494,7 @@ export default function TasksPage() {
       setMutating(true);
       await tasksApi.update([
         {
-          taskId: task.taskId || task.task_id,
+          taskId: task.id,
           archivedAt: new Date().toISOString(),
         },
       ]);
@@ -496,7 +618,7 @@ export default function TasksPage() {
       clearSelection();
       Swal.fire(
         "Estados aplicados",
-        "Estado actualizado en tareas seleccionadas.",
+        `${arr.length} tarea(s) → ${chosen?.name || "Estado seleccionado"}`,
         "success"
       );
       await load();
@@ -581,14 +703,13 @@ export default function TasksPage() {
 
       {/* barra de acciones masivas */}
       <BulkActionsBar
-        selectedCount={selectedCount}
-        disabled={mutating}
+        selectedIds={Array.from(selectedIds)}
+        loading={mutating}
         statuses={statuses}
         onClearSelection={clearSelection}
         onBulkComplete={bulkComplete}
-        onBulkArchive={bulkArchive}
         onBulkDelete={bulkDelete}
-        onBulkChangeStatus={bulkChangeStatus}
+        onApplyStatus={bulkChangeStatus}
       />
 
       {/* tabla y paginación */}
@@ -611,6 +732,10 @@ export default function TasksPage() {
               orderByField={orderByField}
               orderByDir={orderByDir}
               onSort={handleSort}
+              statuses={statuses}
+              priorities={priorities}
+              types={types}
+              tagsCatalog={tags}
             />
           )}
         </Paper>
@@ -635,6 +760,7 @@ export default function TasksPage() {
         priorities={priorities}
         types={types}
         terms={terms}
+        tags={tags}
         onClose={() => setCreateOpen(false)}
         onSubmit={handleCreate}
       />
@@ -647,6 +773,7 @@ export default function TasksPage() {
         priorities={priorities}
         types={types}
         terms={terms}
+        tags={tags}
         onClose={() => setEditingTask(null)}
         onSubmit={handleUpdate}
       />
@@ -662,32 +789,28 @@ export default function TasksPage() {
         loading={mutating}
         onClose={() => setDrawerTask(null)}
         onUpdate={async (payload) => {
+          const id = drawerTask?.id || payload.taskId;
+          setDrawerTask(null);
           await handleUpdate(payload);
-          const id = payload.taskId;
-          if (id && tasksApi?.get) {
-            try {
-              const fresh = await tasksApi.get({ id, include: "all" });
-              setDrawerTask(fresh?.item || null);
-            } catch {}
-          }
+          await load();
         }}
         onComplete={async (opts) => {
           if (!drawerTask) return;
-          await completeOne(drawerTask, opts);
           setDrawerTask(null);
+          await completeOne({ id: drawerTask.id }, opts);
+          await load();
         }}
         onArchive={async () => {
           if (!drawerTask) return;
-          await archiveOne(drawerTask);
           setDrawerTask(null);
+          await archiveOne({ id: drawerTask.id });
+          await load();
         }}
         onDelete={async () => {
           if (!drawerTask) return;
-          await deleteOne(drawerTask);
           setDrawerTask(null);
-        }}
-        onAfterTagsChange={() => {
-          load();
+          await deleteOne({ taskId: drawerTask.taskId || drawerTask.id });
+          await load();
         }}
       />
     </Box>

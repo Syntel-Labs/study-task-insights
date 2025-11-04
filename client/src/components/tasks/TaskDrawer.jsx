@@ -60,14 +60,16 @@ export default function TaskDrawer({
 
   const norm = React.useMemo(() => {
     const t = task || {};
-    const id = t.taskId ?? t.task_id ?? null;
 
-    const status = t.taskStatus ?? t.task_status ?? null;
-    const priority = t.taskPriority ?? t.task_priority ?? null;
-    const type = t.taskType ?? t.task_type ?? null;
+    // Asegura id
+    const id = t.id ?? t.taskId ?? t.task_id ?? null;
+
+    const status = t.taskStatus ?? t.task_status ?? t.status ?? null;
+    const priority = t.taskPriority ?? t.task_priority ?? t.priority ?? null;
+    const type = t.taskType ?? t.task_type ?? t.type ?? null;
     const term = t.term ?? t.term_obj ?? null;
 
-    // Tags seleccionados
+    // Tags seleccionados (lectura)
     const tagItems = t.task_tags ?? t.tags ?? [];
     const tagIds = tagItems
       .map((x) => x.taskTagId ?? x.task_tag_id)
@@ -123,34 +125,70 @@ export default function TaskDrawer({
     setField("dueAt", iso);
   }
 
-  // Validación de campos requeridos
+  // Validación laxa (solo título)
   function validate() {
     const next = {};
     if (!form.title.trim()) next.title = "Obligatorio";
-    if (!form.taskStatusId) next.taskStatusId = "Obligatorio";
-    if (!form.taskPriorityId) next.taskPriorityId = "Obligatorio";
-    if (!form.taskTypeId) next.taskTypeId = "Obligatorio";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
-  // Guardar cambios
+  // Comparador básico
+  const eq = (a, b) => {
+    if (a === b) return true;
+    if (a == null && b == null) return true;
+    return String(a) === String(b);
+  };
+
+  // Guardar cambios (diff + relaciones Prisma)
   async function handleSave() {
     if (!validate()) return;
-    const payload = {
-      taskId: form.id,
-      title: form.title.trim(),
-      description: form.description?.trim() || null,
-      taskStatusId: form.taskStatusId,
-      taskPriorityId: form.taskPriorityId,
-      taskTypeId: form.taskTypeId,
-      termId: form.termId || null,
-      dueAt: form.dueAt || null,
-      estimatedMin: Number.isFinite(Number(form.estimatedMin))
-        ? Number(form.estimatedMin)
-        : 0,
-    };
-    await onUpdate?.(payload);
+
+    const taskId = form.id;
+    if (!taskId) {
+      console.error("[TaskDrawer] missing taskId");
+      return;
+    }
+
+    const data = {};
+
+    if (!eq(form.title, norm.title)) data.title = form.title.trim();
+    if (!eq(form.description, norm.description))
+      data.description = form.description?.trim() || null;
+
+    if (!eq(form.dueAt, norm.dueAt)) data.dueAt = form.dueAt || null;
+
+    const est = Number.isFinite(Number(form.estimatedMin))
+      ? Number(form.estimatedMin)
+      : 0;
+    if (!eq(est, norm.estimatedMin)) data.estimatedMin = est;
+
+    // Relaciones: solo cuando cambia y hay valor
+    if (!eq(form.taskStatusId, norm.taskStatusId) && form.taskStatusId !== "") {
+      data.status = { connect: { taskStatusId: Number(form.taskStatusId) } };
+    }
+    if (
+      !eq(form.taskPriorityId, norm.taskPriorityId) &&
+      form.taskPriorityId !== ""
+    ) {
+      data.priority = {
+        connect: { taskPriorityId: Number(form.taskPriorityId) },
+      };
+    }
+    if (!eq(form.taskTypeId, norm.taskTypeId) && form.taskTypeId !== "") {
+      data.type = { connect: { taskTypeId: Number(form.taskTypeId) } };
+    }
+    if (!eq(form.termId || "", norm.termId || "")) {
+      data.term =
+        form.termId === "" || form.termId == null
+          ? { disconnect: true }
+          : { connect: { termId: Number(form.termId) } };
+    }
+
+    // Nada cambió → no llamar API
+    if (Object.keys(data).length === 0) return;
+
+    await onUpdate?.({ taskId, ...data });
   }
 
   // Confirm dialogs
@@ -208,14 +246,14 @@ export default function TaskDrawer({
             {form.title?.trim() || "Detalle de tarea"}
           </Typography>
           <div className={styles.drawerHeaderActions}>
-            <Button
+            {/* <Button
               size="small"
               variant="outlined"
               onClick={() => navigate("/sessions")}
               className={styles.btnGoSessions}
             >
               Crear sesión
-            </Button>
+            </Button> */}
             <Button
               size="small"
               variant="contained"
