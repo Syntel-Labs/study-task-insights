@@ -56,19 +56,7 @@ export default function TaskDrawer({
   onAfterTagsChange,
 }) {
   const navigate = useNavigate();
-  const getName = (x) =>
-    x?.name ??
-    x?.label ??
-    x?.title ??
-    x?.description ??
-    `#${
-      x?.taskStatusId ??
-      x?.taskPriorityId ??
-      x?.taskTypeId ??
-      x?.termId ??
-      x?.taskTagId ??
-      x?.id
-    }`;
+  const getName = (x) => x?.name ?? "—";
 
   const norm = React.useMemo(() => {
     const t = task || {};
@@ -269,6 +257,7 @@ export default function TaskDrawer({
                 <Select
                   label="Estado"
                   value={form.taskStatusId}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("taskStatusId", e.target.value)}
                 >
                   {statuses.map((s) => (
@@ -283,6 +272,7 @@ export default function TaskDrawer({
                 <Select
                   label="Prioridad"
                   value={form.taskPriorityId}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("taskPriorityId", e.target.value)}
                 >
                   {priorities.map((p) => (
@@ -297,6 +287,7 @@ export default function TaskDrawer({
                 <Select
                   label="Tipo"
                   value={form.taskTypeId}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("taskTypeId", e.target.value)}
                 >
                   {types.map((t) => (
@@ -314,6 +305,7 @@ export default function TaskDrawer({
                 <Select
                   label="Término"
                   value={form.termId || ""}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("termId", e.target.value)}
                 >
                   <MenuItem value="">(Ninguno)</MenuItem>

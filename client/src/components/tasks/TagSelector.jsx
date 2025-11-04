@@ -12,22 +12,9 @@ import {
 } from "@mui/material";
 import styles from "@styles/tasks.module.scss";
 import TagChips from "./TagChips.jsx";
-import { useTaskTagAssignmentsApi } from "@utils/apiResources";
+import { useTaskTagAssignmentsApi } from "@hooks/api/taskTagAssignments.js";
 
-/**
- * Selector y gestor de tags para una tarea.
- *
- * Modo de uso:
- * - Sin `taskId`: solo UI, emite `onChange(newIds)`.
- * - Con `taskId`: realiza POST/DELETE en API y sincroniza assignments.
- *
- * Props:
- * - taskId?: string
- * - allTags: Array<{ taskTagId, name, color? }>
- * - selectedIds: Array<string>
- * - onChange?: (newIds: string[]) => void
- * - disabled?: boolean
- */
+/* Selector y gestor de tags para una tarea */
 export default function TagSelector({
   taskId,
   allTags = [],
@@ -40,6 +27,7 @@ export default function TagSelector({
   const [assignMap, setAssignMap] = React.useState(() => new Map());
   const assignmentsApi = useTaskTagAssignmentsApi?.();
 
+  // Carga inicial de asignaciones si hay `taskId`
   React.useEffect(() => {
     if (!taskId || !assignmentsApi?.listByTask) return;
     let cancelled = false;
@@ -67,6 +55,7 @@ export default function TagSelector({
   }, [taskId, assignmentsApi]);
 
   const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
+
   const available = React.useMemo(
     () =>
       allTags
@@ -83,6 +72,7 @@ export default function TagSelector({
         setLoading(true);
         await assignmentsApi.add({ taskId, taskTagId: tagId });
 
+        // Sincroniza nuevamente el mapa de asignaciones
         const res = await assignmentsApi.listByTask({ taskId });
         const map = new Map();
         for (const it of res?.items || []) {
@@ -138,7 +128,7 @@ export default function TagSelector({
             value={toAddId}
             onChange={(e) => setToAddId(e.target.value)}
             disabled={disabled || loading || available.length === 0}
-            MenuProps={{ disableScrollLock: true }}
+            MenuProps={{ disableScrollLock: true, disablePortal: true }}
           >
             {available.map((t) => (
               <MenuItem key={t.taskTagId} value={t.taskTagId}>
@@ -171,6 +161,7 @@ export default function TagSelector({
             {selectedIds.map((id) => {
               const tag = allTags.find((t) => t.taskTagId === id);
               if (!tag) return null;
+
               const sx = tag.color
                 ? {
                     bgcolor: tag.color,
@@ -181,6 +172,7 @@ export default function TagSelector({
                     bgcolor: "var(--neutral-200)",
                     color: "var(--color-text-secondary)",
                   };
+
               return (
                 <Tooltip key={id} title={tag.name}>
                   <Chip

@@ -83,6 +83,7 @@ export default function TasksHeader({
             label="Ordenar por"
             value={orderByField}
             onChange={(e) => onChangeOrderByField?.(e.target.value)}
+            MenuProps={{ disableScrollLock: true, disablePortal: true }}
           >
             <MenuItem value="dueAt">Vencimiento</MenuItem>
             <MenuItem value="createdAt">Creación</MenuItem>
@@ -98,6 +99,7 @@ export default function TasksHeader({
             label="Dirección"
             value={orderByDir}
             onChange={(e) => onChangeOrderByDir?.(e.target.value)}
+            MenuProps={{ disableScrollLock: true, disablePortal: true }}
           >
             <MenuItem value="asc">Asc</MenuItem>
             <MenuItem value="desc">Desc</MenuItem>

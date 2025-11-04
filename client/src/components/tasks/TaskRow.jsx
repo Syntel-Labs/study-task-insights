@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Checkbox, IconButton, Tooltip } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -16,17 +16,9 @@ import DueDateCell from "./DueDateCell.jsx";
 import styles from "@styles/tasks.module.scss";
 
 /**
- * Fila de tarea para TasksTable.
+ * Fila de tarea dentro de la tabla de tareas.
  *
- * Props:
- * - task: objeto de tarea
- * - selected: boolean
- * - onToggleSelect: (id) => void
- * - onOpenDrawer: (task) => void
- * - onEdit: (task) => void
- * - onComplete: (task) => void
- * - onArchive: (task) => void
- * - onDelete: (task) => void
+ * Muestra los datos principales de la tarea y sus acciones asociadas.
  */
 export default function TaskRow({
   task,
@@ -38,18 +30,17 @@ export default function TaskRow({
   onArchive,
   onDelete,
 }) {
-  const id = useMemo(() => task.task_id || task.taskId, [task]);
+  const id = task.id;
+  const status = task.status;
+  const priority = task.priority;
+  const type = task.type;
+  const tags = task.tags || [];
 
-  const status = task.task_status || task.taskStatus;
-  const priority = task.task_priority || task.taskPriority;
-  const type = task.task_type || task.taskType;
-  const tags = task.task_tags || task.tags || [];
+  const isCompleted = !!task.completedAt;
+  const isArchived = !!task.archivedAt;
 
-  const isCompleted = !!(task.completed_at || task.completedAt);
-  const isArchived = !!(task.archived_at || task.archivedAt);
-
-  const estimated = task.estimated_min ?? task.estimatedMin ?? 0;
-  const actual = task.actual_min ?? task.actualMin;
+  const estimated = task.estimatedMin ?? 0;
+  const actual = task.actualMin;
 
   return (
     <tr className={styles.row} onDoubleClick={() => onOpenDrawer?.(task)}>
@@ -74,21 +65,22 @@ export default function TaskRow({
         )}
       </td>
 
-      <td className={styles.cellChips}>
+      <td className={styles.cellStatus}>
         {status && <StatusBadge status={status} />}
-        {priority && <PriorityChip priority={priority} />}
-        {type && <TypeChip type={type} />}
       </td>
+
+      <td className={styles.cellPriority}>
+        {priority && <PriorityChip priority={priority} />}
+      </td>
+
+      <td className={styles.cellType}>{type && <TypeChip type={type} />}</td>
 
       <td className={styles.cellTags}>
         <TagChips tags={tags} />
       </td>
 
       <td className={styles.cellDue}>
-        <DueDateCell
-          dueAt={task.due_at || task.dueAt}
-          completed={isCompleted}
-        />
+        <DueDateCell dueAt={task.dueAt} completed={isCompleted} />
       </td>
 
       <td className={styles.cellTime}>

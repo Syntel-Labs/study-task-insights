@@ -173,6 +173,7 @@ export default function TaskModal({
                   labelId="status-label"
                   label="Estado"
                   value={form.taskStatusId}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("taskStatusId", e.target.value)}
                   error={!!errors.taskStatusId}
                 >
@@ -190,6 +191,7 @@ export default function TaskModal({
                   labelId="priority-label"
                   label="Prioridad"
                   value={form.taskPriorityId}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("taskPriorityId", e.target.value)}
                   error={!!errors.taskPriorityId}
                 >
@@ -207,6 +209,7 @@ export default function TaskModal({
                   labelId="type-label"
                   label="Tipo"
                   value={form.taskTypeId}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("taskTypeId", e.target.value)}
                   error={!!errors.taskTypeId}
                 >
@@ -227,6 +230,7 @@ export default function TaskModal({
                   labelId="term-label"
                   label="Término"
                   value={form.termId || ""}
+                  MenuProps={{ disableScrollLock: true, disablePortal: true }}
                   onChange={(e) => setField("termId", e.target.value)}
                 >
                   <MenuItem value="">(Ninguno)</MenuItem>

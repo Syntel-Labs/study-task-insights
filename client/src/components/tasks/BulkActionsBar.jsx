@@ -12,60 +12,48 @@ import {
 import ConfirmDialog from "./ConfirmDialog.jsx";
 import styles from "@styles/tasks.module.scss";
 
-/**
- * Barra de acciones masivas para tareas.
- *
- * Permite cambiar estado, completar, archivar, eliminar y limpiar selección.
- * Mantiene el alto incluso sin elementos seleccionados para no desplazar la UI.
- *
- * Props:
- * - selectedCount: número de tareas seleccionadas
- * - disabled: deshabilita todos los botones
- * - statuses: lista de estados disponibles
- * - onClearSelection: callback para limpiar selección
- * - onBulkComplete: callback para completar tareas
- * - onBulkArchive: callback para archivar tareas
- * - onBulkDelete: callback para eliminar tareas
- * - onBulkChangeStatus: callback para cambiar estado de tareas
- */
+/* Barra de acciones masivas para tareas */
 export default function BulkActionsBar({
-  selectedCount = 0,
-  disabled = false,
+  selectedIds = [],
+  loading = false,
   statuses = [],
   onClearSelection,
   onBulkComplete,
-  onBulkArchive,
   onBulkDelete,
-  onBulkChangeStatus,
+  onApplyStatus,
 }) {
   const [confirm, setConfirm] = React.useState({ type: null, open: false });
   const [statusId, setStatusId] = React.useState("");
   const [confirmStatus, setConfirmStatus] = React.useState(false);
 
+  const hasSelection = selectedIds.length > 0;
+
+  // Filtra estados finales para mostrar advertencia al aplicar
   const finalStatuses = React.useMemo(
     () => statuses.filter((s) => s.isFinal),
     [statuses]
   );
 
-  const hasSelection = selectedCount > 0;
-
   const openConfirm = (type) => setConfirm({ type, open: true });
   const closeConfirm = () => setConfirm({ type: null, open: false });
 
+  // Ejecuta acción confirmada de completar o eliminar
   const handleConfirm = async (payload) => {
     try {
-      if (confirm.type === "complete") await onBulkComplete?.(payload);
-      else if (confirm.type === "archive") await onBulkArchive?.();
-      else if (confirm.type === "delete") await onBulkDelete?.();
+      if (confirm.type === "complete")
+        await onBulkComplete?.(selectedIds, payload);
+      else if (confirm.type === "delete") await onBulkDelete?.(selectedIds);
     } finally {
       closeConfirm();
     }
   };
 
+  // Aplica un nuevo estado a las tareas seleccionadas
   const handleConfirmStatus = async () => {
     if (!statusId) return;
     try {
-      await onBulkChangeStatus?.(statusId);
+      await onApplyStatus?.(statusId); // delega al padre (TasksPage)
+      setStatusId(""); // limpia el select
     } finally {
       setConfirmStatus(false);
     }
@@ -88,7 +76,7 @@ export default function BulkActionsBar({
           className={styles.bulkLeft}
         >
           <Typography variant="body2" className={styles.bulkCount}>
-            {selectedCount} seleccionada(s)
+            {selectedIds.length} seleccionada(s)
           </Typography>
 
           <FormControl size="small" className={styles.bulkStatusControl}>
@@ -98,7 +86,8 @@ export default function BulkActionsBar({
               label="Cambiar estado"
               value={statusId}
               onChange={(e) => setStatusId(e.target.value)}
-              disabled={disabled}
+              disabled={loading}
+              MenuProps={{ disableScrollLock: true, disablePortal: true }}
             >
               {statuses.map((s) => (
                 <MenuItem key={s.taskStatusId} value={s.taskStatusId}>
@@ -111,7 +100,7 @@ export default function BulkActionsBar({
           <Button
             size="small"
             variant="outlined"
-            disabled={!statusId || disabled || !hasSelection}
+            disabled={!statusId || loading || !hasSelection}
             onClick={() => setConfirmStatus(true)}
             className={styles.bulkBtn}
             sx={{
@@ -127,7 +116,7 @@ export default function BulkActionsBar({
           <Button
             size="small"
             variant="contained"
-            disabled={!hasSelection || disabled}
+            disabled={!hasSelection || loading}
             onClick={() => openConfirm("complete")}
             className={styles.bulkBtn}
             sx={{
@@ -142,22 +131,7 @@ export default function BulkActionsBar({
           <Button
             size="small"
             variant="contained"
-            disabled={!hasSelection || disabled}
-            onClick={() => openConfirm("archive")}
-            className={styles.bulkBtn}
-            sx={{
-              bgcolor: "var(--brand-primary-400)",
-              color: "var(--color-text-inverse)",
-              "&:hover": { opacity: 0.9 },
-            }}
-          >
-            Archivar
-          </Button>
-
-          <Button
-            size="small"
-            variant="contained"
-            disabled={!hasSelection || disabled}
+            disabled={!hasSelection || loading}
             onClick={() => openConfirm("delete")}
             className={styles.bulkBtnDanger}
             sx={{
@@ -173,7 +147,7 @@ export default function BulkActionsBar({
             size="small"
             variant="text"
             onClick={onClearSelection}
-            disabled={!hasSelection || disabled}
+            disabled={!hasSelection || loading}
             className={styles.bulkBtnClear}
           >
             Limpiar selección
@@ -181,14 +155,15 @@ export default function BulkActionsBar({
         </Stack>
       </Box>
 
+      {/* Confirmación de completar tareas */}
       <ConfirmDialog
         open={confirm.open && confirm.type === "complete"}
         title="Completar tareas seleccionadas"
         tone="primary"
         message={
           <span>
-            Vas a marcar <b>{selectedCount}</b> tarea(s) como <b>completadas</b>
-            . También puedes registrar minutos reales (opcional).
+            Vas a marcar <b>{selectedIds.length}</b> tarea(s) como{" "}
+            <b>completadas</b>.
           </span>
         }
         askActualMin
@@ -197,21 +172,7 @@ export default function BulkActionsBar({
         onConfirm={handleConfirm}
       />
 
-      <ConfirmDialog
-        open={confirm.open && confirm.type === "archive"}
-        title="Archivar tareas seleccionadas"
-        tone="warning"
-        message={
-          <span>
-            Vas a <b>archivar</b> <b>{selectedCount}</b> tarea(s). Podrás
-            desarchivarlas luego.
-          </span>
-        }
-        confirmLabel="Archivar"
-        onClose={closeConfirm}
-        onConfirm={handleConfirm}
-      />
-
+      {/* Confirmación de eliminar tareas */}
       <ConfirmDialog
         open={confirm.open && confirm.type === "delete"}
         title="Eliminar tareas seleccionadas"
@@ -219,7 +180,7 @@ export default function BulkActionsBar({
         message={
           <span>
             Esta acción es <b>definitiva</b>. Se eliminarán{" "}
-            <b>{selectedCount}</b> tarea(s).
+            <b>{selectedIds.length}</b> tarea(s).
           </span>
         }
         confirmLabel="Eliminar"
@@ -227,13 +188,14 @@ export default function BulkActionsBar({
         onConfirm={handleConfirm}
       />
 
+      {/* Confirmación de cambio de estado */}
       <ConfirmDialog
         open={confirmStatus}
         title="Aplicar estado a seleccionadas"
         tone="primary"
         message={
           <span>
-            Aplicarás el estado a <b>{selectedCount}</b> tarea(s).
+            Aplicarás el estado a <b>{selectedIds.length}</b> tarea(s).
             {finalStatuses.some((s) => s.taskStatusId === statusId) && (
               <>
                 {" "}
