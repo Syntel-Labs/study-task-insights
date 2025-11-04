@@ -54,14 +54,18 @@ Desde la carpeta `server/`:
 ```bash
 cd server
 docker compose up -d --build
+docker compose exec ollama ollama pull qwen2.5:7b-instruct
+docker compose exec ollama ollama list
 ```
 
 * Inicia PostgreSQL, la API y el motor Ollama con el modelo Qwen2.5.
 * Verifica logs y estado de los servicios:
 
 ```bash
-docker compose logs -f api
+docker compose logs -f db
+docker compose logs -f ollama-init
 docker compose logs -f ollama
+docker compose logs -f api
 ```
 
 ### 2️⃣ Levantar el **frontend**
@@ -69,8 +73,14 @@ docker compose logs -f ollama
 Desde la carpeta `study-task-insights-frontend/`:
 
 ```bash
-cd study-task-insights-frontend
+cd client
 docker compose up -d --build
+```
+
+* Verifica logs y estado de los servicios:
+
+```bash
+docker compose logs -f web
 ```
 
 * Compila la aplicación React y la sirve con Nginx.
