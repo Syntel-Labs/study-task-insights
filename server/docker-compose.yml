@@ -1,23 +1,36 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
-  db:
+  atlas:
     image: postgres:16
+    container_name: sti-atlas
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - sti_pgdata:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 3s
       retries: 20
-  ollama:
+    restart: unless-stopped
+    logging: *default-logging
+
+  hermes:
     image: ollama/ollama:latest
-    container_name: sti_ollama
+    container_name: sti-hermes
     volumes:
-      - ollama:/root/.ollama
+      - sti_ollama:/root/.ollama
+      - ./scripts:/scripts:ro
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "ollama", "list"]
@@ -25,31 +38,36 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 30
+    logging: *default-logging
 
-  ollama-init:
+  prometheus:
     image: ollama/ollama:latest
-    container_name: sti_ollama_init
+    container_name: sti-prometheus
     depends_on:
-      ollama:
+      hermes:
         condition: service_healthy
     environment:
-      OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["/bin/sh", "-lc"]
+      OLLAMA_HOST: http://hermes:11434
+    entrypoint: ["/bin/sh", "-c"]
     command: >
-      ollama pull qwen2.5:7b-instruct && echo modelo listo && sleep 2
+      ollama list | grep -q "${LLM_MODEL:-qwen2.5:7b-instruct}"
+      && echo "Model ${LLM_MODEL:-qwen2.5:7b-instruct} already exists, skipping pull."
+      || (echo "Pulling model ${LLM_MODEL:-qwen2.5:7b-instruct}..." && ollama pull "${LLM_MODEL:-qwen2.5:7b-instruct}" && echo "Model ready.")
     volumes:
-      - ollama:/root/.ollama
+      - sti_ollama:/root/.ollama
+      - ./scripts:/scripts:ro
     restart: "no"
+    logging: *default-logging
 
-  api:
+  apollo:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sti_api
+    container_name: sti-apollo
     depends_on:
-      db:
+      atlas:
         condition: service_healthy
-      ollama-init:
+      prometheus:
         condition: service_completed_successfully
     env_file:
       - .env
@@ -60,14 +78,18 @@ services:
       ACCESS_ENABLED: ${ACCESS_ENABLED}
       ACCESS_TOKEN: ${ACCESS_TOKEN}
       ACCESS_SESSION_HOURS: ${ACCESS_SESSION_HOURS}
-      OLLAMA_URL: ${OLLAMA_URL}
+      OLLAMA_URL: ${OLLAMA_URL:-http://hermes:11434}
       LLM_MODEL: ${LLM_MODEL}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS}
       LLM_TEMPERATURE: ${LLM_TEMPERATURE}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
     ports:
       - "${APP_PORT:-3000}:3000"
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
-  pgdata:
-  ollama:
+  sti_pgdata:
+    name: sti_pgdata
+  sti_ollama:
+    name: sti_ollama

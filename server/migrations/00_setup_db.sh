@@ -12,7 +12,7 @@ echo "${CYAN}Inicializando base de datos PostgreSQL...${RESET}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-for f in /docker-entrypoint-initdb.d/*.psql; do
+for f in /docker-entrypoint-initdb.d/*.sql; do
   [ -f "$f" ] || continue
   echo "${YELLOW}Ejecutando:${RESET} $(basename "$f")"
   psql -v ON_ERROR_STOP=1 \
