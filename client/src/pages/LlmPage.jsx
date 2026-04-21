@@ -24,7 +24,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { useLlmApi } from "@utils/apiResources";
+import { useLlmApi } from "@hooks/api/llm";
 import styles from "@styles/llm.module.scss";
 
 export default function LlmPage() {
@@ -40,7 +40,7 @@ export default function LlmPage() {
     setBusy(true);
     try {
       const data = await recommendations({ limitWeeks });
-      setOutput(data?.text || JSON.stringify(data, null, 2));
+      setOutput(data?.data?.text || JSON.stringify(data, null, 2));
     } finally {
       setBusy(false);
     }
@@ -51,7 +51,7 @@ export default function LlmPage() {
     setBusy(true);
     try {
       const data = await chat([{ role: "user", content: chatInput.trim() }]);
-      setOutput(data?.text || JSON.stringify(data, null, 2));
+      setOutput(data?.data?.text || JSON.stringify(data, null, 2));
     } finally {
       setBusy(false);
     }

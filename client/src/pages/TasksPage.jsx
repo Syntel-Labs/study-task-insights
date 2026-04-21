@@ -1,5 +1,4 @@
-import React from "react";
-import Swal from "sweetalert2";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Box, Paper, Collapse } from "@mui/material";
 import styles from "@styles/tasks.module.scss";
 
@@ -16,252 +15,87 @@ import TaskDrawer from "@components/tasks/TaskDrawer.jsx";
 import { useTasksApi } from "@hooks/api/tasks";
 import { useTaskTagAssignmentsApi } from "@hooks/api/taskTagAssignments";
 import { useCatalogsCrud } from "@hooks/api/catalogs";
+import { useTasksFilters } from "@hooks/useTasksFilters";
+import { useTasksMutations } from "@hooks/useTasksMutations";
 
-/** página de tareas: lista, filtros, paginación, acciones masivas y detalle/modal */
+const humanize = (code = "") =>
+  String(code).replace(/[_-]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()).trim();
+
 export default function TasksPage() {
-  // apis
   const tasksApi = useTasksApi();
   const tagAssignApi = useTaskTagAssignmentsApi();
-  const {
-    taskStatuses,
-    taskPriorities,
-    taskTypes,
-    terms: termsApi,
-    taskTags,
-  } = useCatalogsCrud();
+  const { taskStatuses, taskPriorities, taskTypes, terms: termsApi, taskTags } = useCatalogsCrud();
 
-  // estado de datos
-  const [items, setItems] = React.useState([]);
-  const [total, setTotal] = React.useState(0);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState("");
+  const filters = useTasksFilters();
 
-  // catálogos
-  const [statuses, setStatuses] = React.useState([]);
-  const [priorities, setPriorities] = React.useState([]);
-  const [types, setTypes] = React.useState([]);
-  const [terms, setTerms] = React.useState([]);
-  const [tags, setTags] = React.useState([]);
-  const [tagAssignments, setTagAssignments] = React.useState([]);
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [catalogs, setCatalogs] = useState({ statuses: [], priorities: [], types: [], terms: [], tags: [] });
+  const [tagAssignments, setTagAssignments] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [drawerTask, setDrawerTask] = useState(null);
+  const [showFilters, setShowFilters] = useState(true);
+  const filtersRef = useRef(null);
 
-  // parámetros de consulta
-  const [q, setQ] = React.useState("");
-
-  // filtros aplicados (disparan carga)
-  const [statusId, setStatusId] = React.useState(null);
-  const [priorityId, setPriorityId] = React.useState(null);
-  const [typeId, setTypeId] = React.useState(null);
-  const [termId, setTermId] = React.useState(null);
-  const [tagIds, setTagIds] = React.useState([]);
-  const [dueFrom, setDueFrom] = React.useState(null);
-  const [dueTo, setDueTo] = React.useState(null);
-
-  // filtros en edición (no disparan carga)
-  const [dStatusId, setDStatusId] = React.useState(null);
-  const [dPriorityId, setDPriorityId] = React.useState(null);
-  const [dTypeId, setDTypeId] = React.useState(null);
-  const [dTermId, setDTermId] = React.useState(null);
-  const [dTagIds, setDTagIds] = React.useState([]);
-  const [dDueFrom, setDDueFrom] = React.useState(null);
-  const [dDueTo, setDDueTo] = React.useState(null);
-
-  // opciones generales
-  const [archived, setArchived] = React.useState(false);
-  const [orderByField, setOrderByField] = React.useState("dueAt");
-  const [orderByDir, setOrderByDir] = React.useState("asc");
-  const [limit, setLimit] = React.useState(20);
-  const [offset, setOffset] = React.useState(0);
-
-  // selección múltiple
-  const [selectedIds, setSelectedIds] = React.useState(() => new Set());
-
-  // crear/editar/detalle
-  const [createOpen, setCreateOpen] = React.useState(false);
-  const [editingTask, setEditingTask] = React.useState(null);
-  const [drawerTask, setDrawerTask] = React.useState(null);
-  const [mutating, setMutating] = React.useState(false);
-
-  // visibilidad panel de filtros
-  const [showFilters, setShowFilters] = React.useState(true);
-  const filtersRef = React.useRef(null);
-
-  // helper: scroll suave al panel de filtros
-  function scrollToFilters() {
-    const el = filtersRef.current;
-    if (!el) return;
-    let parent = el.parentElement;
-    const isScrollable = (n) =>
-      /(auto|scroll)/.test(window.getComputedStyle(n).overflowY);
-    while (parent && !isScrollable(parent)) parent = parent.parentElement;
-    const scroller = parent || window;
-    const top = parent
-      ? el.offsetTop - 8
-      : el.getBoundingClientRect().top + window.scrollY - 8;
-    if (parent) parent.scrollTo({ top, behavior: "smooth" });
-    else window.scrollTo({ top, behavior: "smooth" });
-  }
-
-  // toggle filtros y sincroniza borradores
-  function openFilters() {
-    setShowFilters((v) => {
-      const next = !v; // ← toggle
-      setTimeout(() => {
-        if (next) scrollToFilters();
-
-        // sincroniza borradores con filtros aplicados al abrir
-        if (next) {
-          setDStatusId(statusId);
-          setDPriorityId(priorityId);
-          setDTypeId(typeId);
-          setDTermId(termId);
-          setDTagIds(tagIds);
-          setDDueFrom(dueFrom);
-          setDDueTo(dueTo);
-        }
-      }, 0);
-      return next;
-    });
-  }
-
-  React.useEffect(() => {
+  // Load catalogs once
+  useEffect(() => {
     let cancelled = false;
-
-    const humanize = (code = "") =>
-      String(code)
-        .replace(/[_\-]+/g, " ")
-        .replace(/\b\w/g, (m) => m.toUpperCase())
-        .trim();
-
     (async () => {
       try {
         const [S, P, T, Te, Tg] = await Promise.all([
-          taskStatuses.list({ limit: 200 }),
-          taskPriorities.list({ limit: 200 }),
-          taskTypes.list({ limit: 200 }),
-          termsApi.list({ limit: 200 }),
-          taskTags.list({ limit: 500 }),
+          taskStatuses.list({ pageSize: 200 }),
+          taskPriorities.list({ pageSize: 200 }),
+          taskTypes.list({ pageSize: 200 }),
+          termsApi.list({ pageSize: 200 }),
+          taskTags.list({ pageSize: 500 }),
         ]);
-
         if (cancelled) return;
-
-        // normaliza catálogos con 'name' derivado de 'code'
-        const normStatuses = (S.items || []).map((x) => ({
-          taskStatusId: x.taskStatusId,
-          code: x.code,
-          name: humanize(x.code), // ← crea 'name'
-          isFinal: !!x.isFinal,
-        }));
-
-        const normPriorities = (P.items || [])
-          .map((x) => ({
-            taskPriorityId: x.taskPriorityId,
-            code: x.code,
-            name: humanize(x.code),
-            weight: Number(x.weight ?? 0),
-          }))
-          .sort((a, b) => a.weight - b.weight);
-
-        const normTypes = (T.items || []).map((x) => ({
-          taskTypeId: x.taskTypeId,
-          code: x.code,
-          name: humanize(x.code),
-        }));
-
-        const normTerms = (Te.items || []).map((x) => ({
-          termId: x.termId,
-          name: x.name ?? humanize(x.code ?? ""),
-        }));
-
-        const normTags = (Tg.items || []).map((x) => ({
-          taskTagId: x.taskTagId,
-          name: x.name,
-          color: x.color,
-        }));
-
-        setStatuses(normStatuses);
-        setPriorities(normPriorities);
-        setTypes(normTypes);
-        setTerms(normTerms);
-        setTags(normTags);
-      } catch {}
+        setCatalogs({
+          statuses: (S.data?.items ?? S.items ?? []).map((x) => ({ taskStatusId: x.taskStatusId, code: x.code, name: humanize(x.code), isFinal: !!x.isFinal })),
+          priorities: (P.data?.items ?? P.items ?? []).map((x) => ({ taskPriorityId: x.taskPriorityId, code: x.code, name: humanize(x.code), weight: Number(x.weight ?? 0) })).sort((a, b) => a.weight - b.weight),
+          types: (T.data?.items ?? T.items ?? []).map((x) => ({ taskTypeId: x.taskTypeId, code: x.code, name: humanize(x.code) })),
+          terms: (Te.data?.items ?? Te.items ?? []).map((x) => ({ termId: x.termId, name: x.name ?? humanize(x.code ?? "") })),
+          tags: (Tg.data?.items ?? Tg.items ?? []).map((x) => ({ taskTagId: x.taskTagId, name: x.name, color: x.color })),
+        });
+      } catch { /* catalogs are non-critical */ }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [taskStatuses, taskPriorities, taskTypes, termsApi, taskTags]);
 
-  // construye query para API según filtros y paginación
-  const query = React.useMemo(() => {
-    const qparams = {
-      include: "all",
-      limit,
-      offset,
-      orderByField,
-      orderByDir,
-      archived: archived ? "true" : "false",
-    };
-    if (q?.trim()) qparams.q = q.trim();
-    if (statusId) qparams.statusId = statusId;
-    if (priorityId) qparams.priorityId = priorityId;
-    if (typeId) qparams.typeId = typeId;
-    if (termId) qparams.termId = termId;
-    if (tagIds?.length) qparams.tagId = tagIds.map(String);
-    if (dueFrom) qparams.dueFrom = dueFrom;
-    if (dueTo) qparams.dueTo = dueTo;
-    return qparams;
-  }, [
-    q,
-    statusId,
-    priorityId,
-    typeId,
-    termId,
-    tagIds,
-    dueFrom,
-    dueTo,
-    archived,
-    limit,
-    offset,
-    orderByField,
-    orderByDir,
-  ]);
-
-  // carga lista de tareas
-  async function load() {
+  const loadTasks = useCallback(async () => {
     if (!tasksApi?.list) return;
     setLoading(true);
     setError("");
     try {
       const [resp, assignsResp] = await Promise.all([
-        tasksApi.list(query),
-        tagAssignApi.list({ limit: 10000 }),
+        tasksApi.list(filters.apiQuery),
+        tagAssignApi.list({ pageSize: 10000 }),
       ]);
 
-      const baseItems = resp?.items ?? [];
-      const assigns = assignsResp?.items ?? [];
+      const baseItems = resp?.data?.items ?? resp?.items ?? [];
+      const assigns = assignsResp?.data?.items ?? assignsResp?.items ?? [];
+      setTagAssignments(assigns);
 
       const byTask = new Map();
       for (const a of assigns) {
-        const taskId = a.taskId ?? a.task_id;
+        const tId = a.taskId ?? a.task_id;
         const tagId = a.taskTagId ?? a.task_tag_id;
-        if (!taskId || !tagId) continue;
-        (byTask.get(taskId) || byTask.set(taskId, []).get(taskId)).push(tagId);
+        if (!tId || !tagId) continue;
+        (byTask.get(tId) ?? (byTask.set(tId, []).get(tId))).push(tagId);
       }
 
-      // Mapas de referencia usando keys reales
-      const mapStatus = new Map(statuses.map((s) => [s.taskStatusId, s]));
-      const mapPriority = new Map(priorities.map((p) => [p.taskPriorityId, p]));
-      const mapType = new Map(types.map((t) => [t.taskTypeId, t]));
-      const mapTag = new Map(tags.map((t) => [t.taskTagId, t]));
+      const mapStatus = new Map(catalogs.statuses.map((s) => [s.taskStatusId, s]));
+      const mapPriority = new Map(catalogs.priorities.map((p) => [p.taskPriorityId, p]));
+      const mapType = new Map(catalogs.types.map((t) => [t.taskTypeId, t]));
+      const mapTag = new Map(catalogs.tags.map((t) => [t.taskTagId, t]));
 
-      const viewItems = baseItems.map((row) => {
+      setItems(baseItems.map((row) => {
         const id = row.taskId ?? row.task_id;
-        const statusId = row.taskStatusId ?? row.task_status_id;
-        const priorityId = row.taskPriorityId ?? row.task_priority_id;
-        const typeId = row.taskTypeId ?? row.task_type_id;
-        const tagIds =
-          row.taskTagIds ?? row.task_tag_ids ?? byTask.get(id) ?? [];
-
+        const rowTagIds = row.taskTagIds ?? row.task_tag_ids ?? byTask.get(id) ?? [];
         return {
           id,
           title: row.title,
@@ -271,455 +105,98 @@ export default function TasksPage() {
           actualMin: row.actualMin ?? row.actual_min ?? null,
           completedAt: row.completedAt ?? row.completed_at ?? null,
           archivedAt: row.archivedAt ?? row.archived_at ?? null,
-
-          status: mapStatus.get(statusId) || null,
-          priority: mapPriority.get(priorityId) || null,
-          type: mapType.get(typeId) || null,
-          tags: tagIds.map((tid) => mapTag.get(tid)).filter(Boolean),
+          status: mapStatus.get(row.taskStatusId ?? row.task_status_id) ?? null,
+          priority: mapPriority.get(row.taskPriorityId ?? row.task_priority_id) ?? null,
+          type: mapType.get(row.taskTypeId ?? row.task_type_id) ?? null,
+          tags: rowTagIds.map((tid) => mapTag.get(tid)).filter(Boolean),
         };
-      });
+      }));
 
-      setItems(viewItems);
-      setTotal(resp?.total ?? 0);
-      console.log("[TASK] viewItems[0]:", viewItems[0]);
+      setTotal(resp?.data?.meta?.pagination?.totalItems ?? resp?.total ?? 0);
     } catch (e) {
       setError(e?.payload?.message || e?.message || "Error al cargar tareas");
     } finally {
       setLoading(false);
     }
-  }
+  }, [filters.apiQuery, catalogs, tasksApi, tagAssignApi]);
 
-  React.useEffect(() => {
-    load();
-  }, [query, statuses, priorities, types, tags]);
+  useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  // helpers de selección
-  function clearSelection() {
-    setSelectedIds(new Set());
-  }
-  function toggleSelect(id) {
-    setSelectedIds((prev) => {
-      const s = new Set(prev);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
-      return s;
-    });
-  }
-  function toggleSelectAll(checked) {
-    if (!checked) return clearSelection();
-    setSelectedIds(new Set(items.map((t) => t.id)));
-  }
+  const mutations = useTasksMutations({
+    tasksApi,
+    tagAssignApi,
+    onRefresh: loadTasks,
+  });
 
-  // orden
-  function handleSort(field) {
-    setOrderByField((curr) => {
-      if (curr === field) {
-        setOrderByDir((d) => (d === "asc" ? "desc" : "asc"));
-        return curr;
-      }
-      setOrderByDir("asc");
-      return field;
+  const clearSelection = () => setSelectedIds(new Set());
+  const toggleSelect = (id) => setSelectedIds((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleSelectAll = (checked) => checked ? setSelectedIds(new Set(items.map((t) => t.id))) : clearSelection();
+
+  function openFilters() {
+    setShowFilters((v) => {
+      const next = !v;
+      setTimeout(() => { if (next) filters.syncDraftFromApplied(); }, 0);
+      return next;
     });
   }
 
-  // filtros: aplicar o limpiar
-  function handleApplyFilters() {
-    setStatusId(dStatusId ?? null);
-    setPriorityId(dPriorityId ?? null);
-    setTypeId(dTypeId ?? null);
-    setTermId(dTermId ?? null);
-    setTagIds(dTagIds ?? []);
-    setDueFrom(dDueFrom ?? null);
-    setDueTo(dDueTo ?? null);
-    setOffset(0);
-    load();
-  }
-  function handleClearFilters() {
-    setDStatusId(null);
-    setDPriorityId(null);
-    setDTypeId(null);
-    setDTermId(null);
-    setDTagIds([]);
-    setDDueFrom(null);
-    setDDueTo(null);
-  }
-
-  async function handleCreate(payload) {
-    if (!tasksApi?.create) return;
-    try {
-      setMutating(true);
-      const { tagIds = [], ...data } = payload;
-
-      console.log("[TasksPage] CREATE data (sin tagIds):", data);
-
-      const res = await tasksApi.create(data);
-      const newId = res?.item?.taskId ?? res?.item?.id;
-
-      if (newId && tagIds.length && tagAssignApi?.add) {
-        await Promise.all(
-          tagIds.map((id) => tagAssignApi.add({ taskId: newId, taskTagId: id }))
-        );
-      }
-
-      setCreateOpen(false);
-      await Swal.fire(
-        "Creada",
-        "La tarea fue creada correctamente.",
-        "success"
-      );
-      setOffset(0);
-      await load();
-    } catch (e) {
-      console.error("[TasksPage] CREATE error:", e);
-      setCreateOpen(false);
-      await Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudo crear",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  function openEdit(task) {
-    setEditingTask(task);
-  }
-  async function handleUpdate(payload) {
-    if (!tasksApi?.update) return;
-    try {
-      setMutating(true);
-
-      // dterminar el ID
-      const taskId =
-        payload.taskId ??
-        editingTask?.id ??
-        editingTask?.taskId ??
-        editingTask?.task_id;
-
-      if (!taskId || typeof taskId !== "string") {
-        throw new Error("No se pudo determinar taskId para update");
-      }
-
-      // mapear por anidación
-      const data = {};
-      if (payload.title !== undefined) data.title = payload.title;
-      if (payload.description !== undefined)
-        data.description = payload.description ?? null;
-      if (payload.dueAt !== undefined) data.dueAt = payload.dueAt;
-      if (payload.estimatedMin !== undefined)
-        data.estimatedMin = payload.estimatedMin;
-
-      if (payload.taskStatusId !== undefined) {
-        data.status = {
-          connect: { taskStatusId: Number(payload.taskStatusId) },
-        };
-      }
-      if (payload.taskPriorityId !== undefined) {
-        data.priority = {
-          connect: { taskPriorityId: Number(payload.taskPriorityId) },
-        };
-      }
-      if (payload.taskTypeId !== undefined) {
-        data.type = { connect: { taskTypeId: Number(payload.taskTypeId) } };
-      }
-      if (payload.termId !== undefined) {
-        data.term =
-          payload.termId === null || payload.termId === ""
-            ? { disconnect: true }
-            : { connect: { termId: Number(payload.termId) } };
-      }
-
-      console.log("[TasksPage] UPDATE prisma-shaped:", { taskId, ...data });
-
-      await tasksApi.update([{ taskId, ...data }]);
-      setEditingTask(null);
-      await Swal.fire("Guardado", "Cambios aplicados.", "success");
-      await load();
-    } catch (e) {
-      setEditingTask(null);
-      console.error("[TasksPage] UPDATE error:", e);
-      await Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudo guardar",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  // drawer
-  function openDrawer(task) {
-    setDrawerTask(task);
-  }
-
-  // acciones rápidas (1 tarea)
-  async function completeOne(task, opts) {
-    if (!tasksApi?.update) return;
-    try {
-      setMutating(true);
-      const nowIso = new Date().toISOString();
-      const payload = {
-        taskId: task.id,
-        taskStatusId:
-          (task.taskStatus || task.task_status)?.taskStatusId ||
-          task.taskStatusId ||
-          task.task_status_id,
-        completedAt: nowIso,
-        ...(typeof opts?.actualMin === "number"
-          ? { actualMin: opts.actualMin }
-          : {}),
-      };
-      await tasksApi.update([payload]);
-      Swal.fire(
-        "Completada",
-        "La tarea fue marcada como completada.",
-        "success"
-      );
-      await load();
-    } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudo completar",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  async function archiveOne(task) {
-    if (!tasksApi?.update) return;
-    try {
-      setMutating(true);
-      await tasksApi.update([
-        {
-          taskId: task.id,
-          archivedAt: new Date().toISOString(),
-        },
-      ]);
-      Swal.fire("Archivada", "La tarea fue archivada.", "success");
-      await load();
-    } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudo archivar",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-  async function deleteOne(task) {
-    if (!tasksApi?.remove) return;
-    try {
-      setMutating(true);
-
-      const rawId = task?.id ?? task?.taskId ?? task?.task_id ?? "";
-      const id = String(rawId).trim();
-
-      const isUuid = /^[0-9a-fA-F-]{36}$/.test(id);
-      if (!isUuid) throw new Error(`taskId inválido para delete: "${id}"`);
-
-      await tasksApi.remove([id]);
-      Swal.fire("Eliminada", "La tarea fue eliminada.", "success");
-      await load();
-    } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudo eliminar",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  // acciones masivas
-  async function bulkComplete(opts) {
-    if (!tasksApi?.update) return;
-    try {
-      setMutating(true);
-      const now = new Date().toISOString();
-      const arr = Array.from(selectedIds).map((id) => ({
-        taskId: id,
-        completedAt: now,
-        ...(typeof opts?.actualMin === "number"
-          ? { actualMin: opts.actualMin }
-          : {}),
-      }));
-      await tasksApi.update(arr);
-      clearSelection();
-      Swal.fire("Completadas", "Tareas marcadas como completadas.", "success");
-      await load();
-    } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudieron completar",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  async function bulkArchive() {
-    if (!tasksApi?.update) return;
-    try {
-      setMutating(true);
-      const now = new Date().toISOString();
-      const arr = Array.from(selectedIds).map((id) => ({
-        taskId: id,
-        archivedAt: now,
-      }));
-      await tasksApi.update(arr);
-      clearSelection();
-      Swal.fire("Archivadas", "Tareas archivadas.", "success");
-      await load();
-    } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudieron archivar",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  async function bulkDelete() {
-    if (!tasksApi?.remove) return;
-    try {
-      setMutating(true);
-      await tasksApi.remove(Array.from(selectedIds));
-      clearSelection();
-      Swal.fire("Eliminadas", "Tareas eliminadas.", "success");
-      if (items.length === selectedIds.size && offset > 0)
-        setOffset(Math.max(0, offset - limit));
-      await load();
-    } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudieron eliminar",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  async function bulkChangeStatus(newStatusId) {
-    if (!tasksApi?.update) return;
-    try {
-      setMutating(true);
-      const chosen = statuses.find((s) => s.taskStatusId === newStatusId);
-      const isFinal = !!chosen?.isFinal;
-      const now = new Date().toISOString();
-      const arr = Array.from(selectedIds).map((id) => ({
-        taskId: id,
-        taskStatusId: newStatusId,
-        ...(isFinal ? { completedAt: now } : {}),
-      }));
-      await tasksApi.update(arr);
-      clearSelection();
-      Swal.fire(
-        "Estados aplicados",
-        `${arr.length} tarea(s) → ${chosen?.name || "Estado seleccionado"}`,
-        "success"
-      );
-      await load();
-    } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.payload?.message || e?.message || "No se pudo cambiar el estado",
-        "error"
-      );
-    } finally {
-      setMutating(false);
-    }
-  }
-
-  // renderizado principal
-  if (error) return <ErrorState message={error} onRetry={load} />;
-
-  const selectedCount = selectedIds.size;
+  if (error) return <ErrorState message={error} onRetry={loadTasks} />;
 
   return (
     <Box className={styles.tasksPageRoot}>
-      {/* encabezado */}
       <TasksHeader
-        q={q}
-        onChangeQuery={(val) => {
-          setQ(val);
-          setOffset(0);
-        }}
-        orderByField={orderByField}
-        orderByDir={orderByDir}
-        onChangeOrderByField={(f) => {
-          setOrderByField(f);
-          setOffset(0);
-        }}
-        onChangeOrderByDir={(d) => {
-          setOrderByDir(d);
-          setOffset(0);
-        }}
-        archived={archived}
-        onToggleArchived={(v) => {
-          setArchived(v);
-          setOffset(0);
-        }}
+        q={filters.q}
+        onChangeQuery={(val) => { filters.setQ(val); filters.setPage(1); }}
+        orderByField={filters.sortBy}
+        orderByDir={filters.sortOrder}
+        onChangeOrderByField={(f) => { filters.handleSort(f); filters.setPage(1); }}
+        onChangeOrderByDir={(d) => { mutations; filters.setPage(1); }}
+        archived={filters.archived}
+        onToggleArchived={(v) => { filters.setArchived(v); filters.setPage(1); }}
         onOpenFilters={openFilters}
         showFilters={showFilters}
         onCreateTask={() => setCreateOpen(true)}
         totalCount={total}
       />
 
-      {/* filtros */}
       <Collapse in={showFilters} timeout="auto" unmountOnExit={false}>
-        <Paper
-          ref={filtersRef}
-          id="tasks-filters"
-          className={`${styles.sectionCard} ${styles.filtersCard}`}
-        >
+        <Paper ref={filtersRef} id="tasks-filters" className={`${styles.sectionCard} ${styles.filtersCard}`}>
           <TasksFilters
-            statusId={dStatusId}
-            priorityId={dPriorityId}
-            typeId={dTypeId}
-            termId={dTermId}
-            tagIds={dTagIds}
-            dueFrom={dDueFrom}
-            dueTo={dDueTo}
-            statuses={statuses}
-            priorities={priorities}
-            types={types}
-            terms={terms}
-            tags={tags}
-            onChangeStatus={setDStatusId}
-            onChangePriority={setDPriorityId}
-            onChangeType={setDTypeId}
-            onChangeTerm={setDTermId}
-            onChangeTags={setDTagIds}
-            onChangeDueFrom={setDDueFrom}
-            onChangeDueTo={setDDueTo}
-            onApply={handleApplyFilters}
-            onClear={handleClearFilters}
+            statusId={filters.draft.statusId}
+            priorityId={filters.draft.priorityId}
+            typeId={filters.draft.typeId}
+            termId={filters.draft.termId}
+            tagIds={filters.draft.tagIds}
+            dueFrom={filters.draft.dueFrom}
+            dueTo={filters.draft.dueTo}
+            statuses={catalogs.statuses}
+            priorities={catalogs.priorities}
+            types={catalogs.types}
+            terms={catalogs.terms}
+            tags={catalogs.tags}
+            onChangeStatus={(v) => filters.setDraft((d) => ({ ...d, statusId: v }))}
+            onChangePriority={(v) => filters.setDraft((d) => ({ ...d, priorityId: v }))}
+            onChangeType={(v) => filters.setDraft((d) => ({ ...d, typeId: v }))}
+            onChangeTerm={(v) => filters.setDraft((d) => ({ ...d, termId: v }))}
+            onChangeTags={(v) => filters.setDraft((d) => ({ ...d, tagIds: v }))}
+            onChangeDueFrom={(v) => filters.setDraft((d) => ({ ...d, dueFrom: v }))}
+            onChangeDueTo={(v) => filters.setDraft((d) => ({ ...d, dueTo: v }))}
+            onApply={filters.applyFilters}
+            onClear={filters.clearDraft}
           />
         </Paper>
       </Collapse>
 
-      {/* barra de acciones masivas */}
       <BulkActionsBar
         selectedIds={Array.from(selectedIds)}
-        loading={mutating}
-        statuses={statuses}
+        loading={mutations.mutating}
+        statuses={catalogs.statuses}
         onClearSelection={clearSelection}
-        onBulkComplete={bulkComplete}
-        onBulkDelete={bulkDelete}
-        onApplyStatus={bulkChangeStatus}
+        onBulkComplete={(opts) => { mutations.bulkComplete(selectedIds, opts); clearSelection(); }}
+        onBulkDelete={() => { mutations.bulkDelete(selectedIds); clearSelection(); }}
+        onApplyStatus={(sid) => { mutations.bulkChangeStatus(selectedIds, sid, catalogs.statuses); clearSelection(); }}
       />
 
-      {/* tabla y paginación */}
       <div className={styles.tableViewport}>
         <Paper className={`${styles.sectionCard} ${styles.tableCard}`}>
           {items.length === 0 ? (
@@ -731,94 +208,70 @@ export default function TasksPage() {
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
               onToggleSelectAll={toggleSelectAll}
-              onOpenDrawer={openDrawer}
-              onEdit={openEdit}
-              onComplete={completeOne}
-              onArchive={archiveOne}
-              onDelete={deleteOne}
-              orderByField={orderByField}
-              orderByDir={orderByDir}
-              onSort={handleSort}
-              statuses={statuses}
-              priorities={priorities}
-              types={types}
-              tagsCatalog={tags}
+              onOpenDrawer={setDrawerTask}
+              onEdit={setEditingTask}
+              onComplete={mutations.completeOne}
+              onArchive={mutations.archiveOne}
+              onDelete={mutations.deleteOne}
+              orderByField={filters.sortBy}
+              orderByDir={filters.sortOrder}
+              onSort={filters.handleSort}
+              statuses={catalogs.statuses}
+              priorities={catalogs.priorities}
+              types={catalogs.types}
+              tagsCatalog={catalogs.tags}
             />
           )}
         </Paper>
 
         <PaginationControls
-          limit={limit}
-          offset={offset}
+          limit={filters.pageSize}
+          offset={(filters.page - 1) * filters.pageSize}
           total={total}
-          onChangeLimit={(n) => {
-            setLimit(n);
-            setOffset(0);
-          }}
-          onChangeOffset={(n) => setOffset(n)}
+          onChangeLimit={() => {}}
+          onChangeOffset={(n) => filters.setPage(Math.floor(n / filters.pageSize) + 1)}
         />
       </div>
 
-      {/* modales y drawer */}
       <TaskModal
         open={createOpen}
-        loading={mutating}
-        statuses={statuses}
-        priorities={priorities}
-        types={types}
-        terms={terms}
-        tags={tags}
+        loading={mutations.mutating}
+        statuses={catalogs.statuses}
+        priorities={catalogs.priorities}
+        types={catalogs.types}
+        terms={catalogs.terms}
+        tags={catalogs.tags}
         onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
+        onSubmit={async (payload) => { const ok = await mutations.handleCreate(payload); if (ok) setCreateOpen(false); }}
       />
 
       <TaskModal
         open={!!editingTask}
-        loading={mutating}
+        loading={mutations.mutating}
         initialTask={editingTask}
-        statuses={statuses}
-        priorities={priorities}
-        types={types}
-        terms={terms}
-        tags={tags}
+        statuses={catalogs.statuses}
+        priorities={catalogs.priorities}
+        types={catalogs.types}
+        terms={catalogs.terms}
+        tags={catalogs.tags}
         onClose={() => setEditingTask(null)}
-        onSubmit={handleUpdate}
+        onSubmit={async (payload) => { const ok = await mutations.handleUpdate(payload, editingTask?.id); if (ok) setEditingTask(null); }}
       />
 
       <TaskDrawer
         open={!!drawerTask}
         task={drawerTask}
-        statuses={statuses}
-        priorities={priorities}
-        types={types}
-        terms={terms}
-        tags={tags}
-        loading={mutating}
+        statuses={catalogs.statuses}
+        priorities={catalogs.priorities}
+        types={catalogs.types}
+        terms={catalogs.terms}
+        tags={catalogs.tags}
+        loading={mutations.mutating}
         onClose={() => setDrawerTask(null)}
-        onUpdate={async (payload) => {
-          const id = drawerTask?.id || payload.taskId;
-          setDrawerTask(null);
-          await handleUpdate(payload);
-          await load();
-        }}
-        onComplete={async (opts) => {
-          if (!drawerTask) return;
-          setDrawerTask(null);
-          await completeOne({ id: drawerTask.id }, opts);
-          await load();
-        }}
-        onArchive={async () => {
-          if (!drawerTask) return;
-          setDrawerTask(null);
-          await archiveOne({ id: drawerTask.id });
-          await load();
-        }}
-        onDelete={async () => {
-          if (!drawerTask) return;
-          setDrawerTask(null);
-          await deleteOne({ taskId: drawerTask.taskId || drawerTask.id });
-          await load();
-        }}
+        onUpdate={async (payload) => { setDrawerTask(null); await mutations.handleUpdate(payload, drawerTask?.id); }}
+        onComplete={async (opts) => { const t = drawerTask; setDrawerTask(null); await mutations.completeOne({ id: t?.id }, opts); }}
+        onArchive={async () => { const t = drawerTask; setDrawerTask(null); await mutations.archiveOne({ id: t?.id }); }}
+        onDelete={async () => { const t = drawerTask; setDrawerTask(null); await mutations.deleteOne({ id: t?.id ?? t?.taskId }); }}
       />
     </Box>
   );

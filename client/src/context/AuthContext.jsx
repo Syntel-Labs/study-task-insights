@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { buildApiUrl, session as sessionCfg } from "@utils/config";
+import { healthUrl, session as sessionCfg } from "@utils/config";
 import { useGateApi } from "@hooks/api";
 
 const AuthContext = createContext(null);
@@ -61,8 +61,7 @@ export function AuthProvider({ children }) {
 
   // Hace 1 ping al endpoint protegido y retorna boolean
   const revalidateOnce = useCallback(async () => {
-    const url = buildApiUrl("weekly-productivity", { limit: 1 });
-    const resp = await fetch(url, { credentials: "include" });
+    const resp = await fetch(healthUrl, { credentials: "include" });
     return resp.ok;
   }, []);
 
