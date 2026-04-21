@@ -54,12 +54,13 @@ export default function TasksPage() {
           taskTags.list({ pageSize: 500 }),
         ]);
         if (cancelled) return;
+        const asList = (r) => (Array.isArray(r?.data) ? r.data : r?.data?.items ?? r?.items ?? []);
         setCatalogs({
-          statuses: (S.data?.items ?? S.items ?? []).map((x) => ({ taskStatusId: x.taskStatusId, code: x.code, name: humanize(x.code), isFinal: !!x.isFinal })),
-          priorities: (P.data?.items ?? P.items ?? []).map((x) => ({ taskPriorityId: x.taskPriorityId, code: x.code, name: humanize(x.code), weight: Number(x.weight ?? 0) })).sort((a, b) => a.weight - b.weight),
-          types: (T.data?.items ?? T.items ?? []).map((x) => ({ taskTypeId: x.taskTypeId, code: x.code, name: humanize(x.code) })),
-          terms: (Te.data?.items ?? Te.items ?? []).map((x) => ({ termId: x.termId, name: x.name ?? humanize(x.code ?? "") })),
-          tags: (Tg.data?.items ?? Tg.items ?? []).map((x) => ({ taskTagId: x.taskTagId, name: x.name, color: x.color })),
+          statuses: asList(S).map((x) => ({ taskStatusId: x.taskStatusId, code: x.code, name: humanize(x.code), isFinal: !!x.isFinal })),
+          priorities: asList(P).map((x) => ({ taskPriorityId: x.taskPriorityId, code: x.code, name: humanize(x.code), weight: Number(x.weight ?? 0) })).sort((a, b) => a.weight - b.weight),
+          types: asList(T).map((x) => ({ taskTypeId: x.taskTypeId, code: x.code, name: humanize(x.code) })),
+          terms: asList(Te).map((x) => ({ termId: x.termId, name: x.name ?? humanize(x.code ?? "") })),
+          tags: asList(Tg).map((x) => ({ taskTagId: x.taskTagId, name: x.name, color: x.color })),
         });
       } catch { /* catalogs are non-critical */ }
     })();
@@ -76,8 +77,9 @@ export default function TasksPage() {
         tagAssignApi.list({ pageSize: 10000 }),
       ]);
 
-      const baseItems = resp?.data?.items ?? resp?.items ?? [];
-      const assigns = assignsResp?.data?.items ?? assignsResp?.items ?? [];
+      const asList = (r) => (Array.isArray(r?.data) ? r.data : r?.data?.items ?? r?.items ?? []);
+      const baseItems = asList(resp);
+      const assigns = asList(assignsResp);
       setTagAssignments(assigns);
 
       const byTask = new Map();
@@ -112,7 +114,7 @@ export default function TasksPage() {
         };
       }));
 
-      setTotal(resp?.data?.meta?.pagination?.totalItems ?? resp?.total ?? 0);
+      setTotal(resp?.meta?.pagination?.totalItems ?? resp?.data?.meta?.pagination?.totalItems ?? baseItems.length ?? 0);
     } catch (e) {
       setError(e?.payload?.message || e?.message || "Error al cargar tareas");
     } finally {
