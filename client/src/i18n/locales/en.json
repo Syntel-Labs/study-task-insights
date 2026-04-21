@@ -122,7 +122,8 @@
     "placeholder_empty_rec": "No results yet.",
     "placeholder_empty_chat": "Write a message to start.",
     "error_modelUnavailable": "LLM model is not available. Run the model installation script.",
-    "error_generic": "Could not get a response from the LLM."
+    "error_generic": "Could not get a response from the LLM.",
+    "thinking": "Thinking"
   },
   "messages": {
     "weekly_productivity_refreshed": "Weekly metrics recalculated.",

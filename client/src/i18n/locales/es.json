@@ -122,7 +122,8 @@
     "placeholder_empty_rec": "Sin resultados aún.",
     "placeholder_empty_chat": "Escribe un mensaje para comenzar.",
     "error_modelUnavailable": "El modelo LLM no está disponible. Ejecuta el script de instalación del modelo.",
-    "error_generic": "No se pudo obtener respuesta del LLM."
+    "error_generic": "No se pudo obtener respuesta del LLM.",
+    "thinking": "Pensando"
   },
   "messages": {
     "weekly_productivity_refreshed": "Se recalcularon las métricas semanales.",
