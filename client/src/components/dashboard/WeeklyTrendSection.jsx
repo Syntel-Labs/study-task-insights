@@ -9,6 +9,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowsLeftRight,
@@ -17,65 +18,66 @@ import {
   faMagnifyingGlassMinus,
   faRotateRight,
 } from "@fortawesome/free-solid-svg-icons";
+import { useTranslation } from "react-i18next";
+import { usePreferences } from "@context/PreferencesContext.jsx";
 import { isoWeekToRangeLabel } from "@utils/dates";
 import styles from "@styles/dashboard.module.scss";
 
-// Sección que incluye: título + botones + gráfica + tabla
-export default function WeeklyTrendSection({
-  items,
-  limitWeeks,
-  swap,
-  setSwap,
-}) {
+export default function WeeklyTrendSection({ items, limitWeeks, swap, setSwap }) {
+  const { t } = useTranslation();
+  const { isDark } = usePreferences();
   const chartRef = useRef(null);
+
+  const axisColor = isDark ? "#c3ceda" : "#3a4757";
+  const gridColor = isDark ? "#2a3645" : "#e2e8f0";
+  const bgColor = isDark ? "#121923" : "#ffffff";
+  const textColor = isDark ? "#e9ecf2" : "#1c1c1e";
 
   const chartOption = useMemo(() => {
     const labels = items.map((w) => `S${w.iso_week}`);
     const plannedData = items.map((w) => w.planned_minutes || 0);
     const actualData = items.map((w) => w.actual_minutes || 0);
     const completionData = items.map((w) =>
-      Math.round((w.completion_rate || 0) * 100)
+      Math.round((w.completion_rate || 0))
     );
 
     return {
       backgroundColor: "transparent",
       tooltip: {
         trigger: "axis",
-        backgroundColor: "#fff",
-        borderColor: "#ddd",
-        textStyle: { color: "#111", fontFamily: "var(--font-family-base)" },
+        backgroundColor: bgColor,
+        borderColor: gridColor,
+        textStyle: { color: textColor, fontFamily: "var(--font-family-base)" },
       },
       legend: {
-        data: ["Planificado (min)", "Real (min)", "% Finalización"],
+        data: [
+          t("dashboard.trend_planned"),
+          t("dashboard.trend_actual"),
+          t("dashboard.trend_completion"),
+        ],
         top: 10,
-        textStyle: { color: "var(--color-text-primary)" },
+        textStyle: { color: axisColor },
       },
-      grid: {
-        left: "6%",
-        right: "6%",
-        bottom: "12%",
-        top: 48,
-        containLabel: true,
-      },
+      grid: { left: "6%", right: "6%", bottom: "12%", top: 48, containLabel: true },
       xAxis: {
         type: "category",
         data: labels,
-        axisLabel: { color: "var(--color-text-secondary)" },
-        axisLine: { lineStyle: { color: "var(--color-border)" } },
+        axisLabel: { color: axisColor },
+        axisLine: { lineStyle: { color: gridColor } },
       },
       yAxis: [
         {
           type: "value",
-          name: "Minutos",
+          name: t("dashboard.trend_planned").split(" ")[0],
           position: "left",
-          axisLabel: { color: "var(--color-text-secondary)" },
-          splitLine: { lineStyle: { color: "var(--color-border)" } },
+          axisLabel: { color: axisColor },
+          splitLine: { lineStyle: { color: gridColor } },
         },
         {
           type: "value",
           name: "%",
           position: "right",
-          axisLabel: { color: "var(--color-text-secondary)" },
+          axisLabel: { color: axisColor },
           splitLine: { show: false },
           min: 0,
           max: 100,
@@ -83,35 +85,62 @@ export default function WeeklyTrendSection({
       ],
       series: [
         {
-          name: "Planificado (min)",
+          name: t("dashboard.trend_planned"),
           type: "bar",
           data: plannedData,
-          itemStyle: { color: "#99bffb" },
+          itemStyle: {
+            color: {
+              type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: "#99bffb" },
+                { offset: 1, color: "#4678e8" },
+              ],
+            },
+            borderRadius: [6, 6, 0, 0],
+          },
           barMaxWidth: 26,
         },
         {
-          name: "Real (min)",
+          name: t("dashboard.trend_actual"),
           type: "bar",
           data: actualData,
-          itemStyle: { color: "#4678e8" },
+          itemStyle: {
+            color: {
+              type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: "#f28c38" },
+                { offset: 1, color: "#c96921" },
+              ],
+            },
+            borderRadius: [6, 6, 0, 0],
+          },
           barMaxWidth: 26,
         },
         {
-          name: "% Finalización",
+          name: t("dashboard.trend_completion"),
           type: "line",
           yAxisIndex: 1,
           data: completionData,
-          itemStyle: { color: "#50b470" },
+          itemStyle: { color: "#3d8361" },
           smooth: true,
           lineStyle: { width: 3 },
           symbol: "circle",
-          symbolSize: 6,
+          symbolSize: 8,
+          areaStyle: {
+            color: {
+              type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: "rgba(61, 131, 97, 0.35)" },
+                { offset: 1, color: "rgba(61, 131, 97, 0)" },
+              ],
+            },
+          },
         },
       ],
-      dataZoom: [{ type: "slider", bottom: 8 }],
+      dataZoom: [{ type: "slider", bottom: 8, backgroundColor: "transparent" }],
       toolbox: { show: false },
     };
-  }, [items]);
+  }, [items, t, isDark, axisColor, gridColor, bgColor, textColor]);
 
   function zoomChart(delta) {
     const inst = chartRef.current?.getEchartsInstance?.();
@@ -140,11 +169,11 @@ export default function WeeklyTrendSection({
     const url = instance.getDataURL({
       type: "png",
       pixelRatio: 2,
-      backgroundColor: "#ffffff",
+      backgroundColor: bgColor,
     });
     const a = document.createElement("a");
     a.href = url;
-    a.download = "tendencia_semanal.png";
+    a.download = "weekly_trend.png";
     a.click();
   }
 
@@ -153,38 +182,29 @@ export default function WeeklyTrendSection({
       <Divider />
 
       <Box className={styles.sectionHeader}>
-        <Typography variant="h6">Tendencia semanal</Typography>
+        <Typography variant="h6">{t("dashboard.trend_title")}</Typography>
         <div className={styles.chartButtons}>
-          <Tooltip title="Acercar">
-            <IconButton
-              onClick={() => zoomChart(-10)}
-              className={styles.iconBtn}
-            >
+          <Tooltip title={t("dashboard.trend_zoomIn")}>
+            <IconButton onClick={() => zoomChart(-10)} className={styles.iconBtn}>
               <FontAwesomeIcon icon={faMagnifyingGlassPlus} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Alejar">
-            <IconButton
-              onClick={() => zoomChart(+10)}
-              className={styles.iconBtn}
-            >
+          <Tooltip title={t("dashboard.trend_zoomOut")}>
+            <IconButton onClick={() => zoomChart(+10)} className={styles.iconBtn}>
               <FontAwesomeIcon icon={faMagnifyingGlassMinus} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Restablecer zoom">
+          <Tooltip title={t("dashboard.trend_resetZoom")}>
             <IconButton onClick={resetZoom} className={styles.iconBtn}>
               <FontAwesomeIcon icon={faRotateRight} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Intercambiar posiciones tabla/gráfica">
-            <IconButton
-              onClick={() => setSwap((s) => !s)}
-              className={styles.iconBtn}
-            >
+          <Tooltip title={t("dashboard.trend_swap")}>
+            <IconButton onClick={() => setSwap((s) => !s)} className={styles.iconBtn}>
               <FontAwesomeIcon icon={faArrowsLeftRight} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Descargar imagen">
+          <Tooltip title={t("dashboard.trend_download")}>
             <IconButton onClick={downloadPng} className={styles.iconBtn}>
               <FontAwesomeIcon icon={faDownload} />
             </IconButton>
@@ -205,15 +225,23 @@ export default function WeeklyTrendSection({
             maxWidth: { md: "50%" },
           }}
         >
-          <Paper className={styles.chartCard}>
-            <EChartsReact
-              ref={chartRef}
-              option={chartOption}
-              notMerge
-              lazyUpdate
-              style={{ width: "100%", height: 440 }}
-            />
-          </Paper>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.35 }}
+            whileHover={{ y: -2 }}
+          >
+            <Paper className={styles.chartCard}>
+              <EChartsReact
+                ref={chartRef}
+                option={chartOption}
+                notMerge
+                lazyUpdate
+                style={{ width: "100%", height: 440 }}
+                theme={isDark ? "dark" : undefined}
+              />
+            </Paper>
+          </motion.div>
         </Grid>
 
         <Grid
@@ -228,44 +256,55 @@ export default function WeeklyTrendSection({
             maxWidth: { md: "50%" },
           }}
         >
-          <Paper className={styles.tableCard}>
-            <Typography variant="subtitle2" className={styles.tableTitle}>
-              Últimas {limitWeeks} semanas
-            </Typography>
-            <div className={styles.tableWrapper}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Semana</th>
-                    <th>Creadas</th>
-                    <th>Completadas</th>
-                    <th>Planificado (min)</th>
-                    <th>Real (min)</th>
-                    <th>%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((w) => (
-                    <tr key={w.weekly_productivity_id}>
-                      <td>{isoWeekToRangeLabel(w.iso_year, w.iso_week)}</td>
-                      <td>{w.tasks_created}</td>
-                      <td>{w.tasks_completed}</td>
-                      <td>{w.planned_minutes}</td>
-                      <td>{w.actual_minutes}</td>
-                      <td>{Math.round((w.completion_rate || 0) * 100)}%</td>
-                    </tr>
-                  ))}
-                  {items.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.35, delay: 0.05 }}
+          >
+            <Paper className={styles.tableCard}>
+              <Typography variant="subtitle2" className={styles.tableTitle}>
+                {t("dashboard.table_lastWeeks", { n: limitWeeks })}
+              </Typography>
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
                     <tr>
-                      <td colSpan={6} className={styles.emptyCell}>
-                        Sin datos
-                      </td>
+                      <th>{t("dashboard.table_week")}</th>
+                      <th>{t("dashboard.table_created")}</th>
+                      <th>{t("dashboard.table_completed")}</th>
+                      <th>{t("dashboard.table_planned")}</th>
+                      <th>{t("dashboard.table_actual")}</th>
+                      <th>{t("dashboard.table_rate")}</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Paper>
+                  </thead>
+                  <tbody>
+                    {items.map((w, i) => (
+                      <motion.tr
+                        key={w.weekly_productivity_id || i}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.25, delay: i * 0.03 }}
+                      >
+                        <td>{isoWeekToRangeLabel(w.iso_year, w.iso_week)}</td>
+                        <td>{w.tasks_created}</td>
+                        <td>{w.tasks_completed}</td>
+                        <td>{w.planned_minutes}</td>
+                        <td>{w.actual_minutes}</td>
+                        <td>{Math.round(w.completion_rate || 0)}%</td>
+                      </motion.tr>
+                    ))}
+                    {items.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyCell}>
+                          {t("common.noData")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Paper>
+          </motion.div>
         </Grid>
       </Grid>
     </>
