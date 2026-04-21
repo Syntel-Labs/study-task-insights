@@ -29,8 +29,9 @@ export default function DashboardPage() {
     loadingRef.current = true;
     setLoading(true);
     try {
-      const data = await list({ limit: limitWeeks });
-      setItems(data?.items ?? []);
+      const resp = await list({ limit: limitWeeks });
+      const rows = Array.isArray(resp?.data) ? resp.data : resp?.data?.items ?? resp?.items ?? [];
+      setItems(rows);
       setLastUpdate(new Date());
     } finally {
       loadingRef.current = false;
