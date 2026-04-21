@@ -1,24 +1,21 @@
-import prisma from "#config/prismaClient.js";
+import * as tasksRepo from "#repositories/tasksRepository.js";
 
 const READ_ONLY_FIELDS = ["taskId", "createdAt", "updatedAt"];
 
-/** Elimina campos de solo lectura antes de guardar o actualizar */
-const stripReadOnly = (data) => {
+const strip_read_only = (data) => {
   const d = { ...data };
   for (const k of READ_ONLY_FIELDS) delete d[k];
   return d;
 };
 
-/** Normaliza límite y desplazamiento para paginación */
-const normalizePagination = (limit, offset) => {
+const normalize_pagination = (limit, offset) => {
   const take =
     typeof limit === "number" && limit > 0 && limit <= 200 ? limit : 50;
   const skip = typeof offset === "number" && offset >= 0 ? offset : 0;
   return { take, skip };
 };
 
-/** Construye filtros `where` a partir de los parámetros de query */
-const buildWhere = (filters = {}) => {
+const build_where = (filters = {}) => {
   const {
     statusId,
     priorityId,
@@ -63,17 +60,14 @@ const buildWhere = (filters = {}) => {
     const arr = Array.isArray(tagId) ? tagId : [tagId];
     const ids = [...new Set(arr.map(String))];
     if (ids.length) {
-      where.tagAssignments = {
-        some: { taskTagId: { in: ids } },
-      };
+      where.tagAssignments = { some: { taskTagId: { in: ids } } };
     }
   }
 
   return where;
 };
 
-/** Construye objeto `include` para relaciones según parámetro */
-const buildInclude = (include) => {
+const build_include = (include) => {
   const wantsAll = include === "all";
   const wantsLookups = wantsAll || include?.includes("lookups");
   const wantsTags = wantsAll || include?.includes("tags");
@@ -86,112 +80,76 @@ const buildInclude = (include) => {
     inc.term = true;
   }
   if (wantsTags) {
-    inc.tagAssignments = {
-      include: { tag: true },
-    };
+    inc.tagAssignments = { include: { tag: true } };
   }
   return Object.keys(inc).length ? inc : undefined;
 };
 
-/** Listado de tareas con filtros, paginación e includes */
 export const listTasks = async (params = {}) => {
   const {
-    q,
-    limit,
-    offset,
-    statusId,
-    priorityId,
-    typeId,
-    termId,
-    tagId,
-    dueFrom,
-    dueTo,
-    archived,
-    include,
-    orderBy = { dueAt: "asc" },
+    q, limit, offset, statusId, priorityId, typeId, termId,
+    tagId, dueFrom, dueTo, archived, include, orderBy = { dueAt: "asc" },
   } = params;
 
-  const where = buildWhere({
-    q,
-    statusId,
-    priorityId,
-    typeId,
-    termId,
-    tagId,
-    dueFrom,
-    dueTo,
-    archived,
-  });
-
-  const inc = buildInclude(include);
-  const { take, skip } = normalizePagination(limit, offset);
+  const where = build_where({ q, statusId, priorityId, typeId, termId, tagId, dueFrom, dueTo, archived });
+  const inc = build_include(include);
+  const { take, skip } = normalize_pagination(limit, offset);
 
   const [items, total] = await Promise.all([
-    prisma.task.findMany({ where, include: inc, orderBy, take, skip }),
-    prisma.task.count({ where }),
+    tasksRepo.findMany({ where, include: inc, orderBy, take, skip }),
+    tasksRepo.count(where),
   ]);
 
   return { items, total };
 };
 
-/** Obtiene una tarea por UUID y relaciones */
 export const getTaskById = async (taskId, { include } = {}) => {
-  const inc = buildInclude(include);
-  const item = await prisma.task.findUnique({
-    where: { taskId: String(taskId) },
-    include: inc,
-  });
+  const inc = build_include(include);
+  const item = await tasksRepo.findById(taskId, inc);
   if (!item) {
-    const err = new Error(`No encontrado id=${taskId}`);
+    const err = new Error(`Task not found: id=${taskId}`);
     err.statusCode = 404;
     throw err;
   }
   return item;
 };
 
-/** Crea una o varias tareas nuevas */
 export const createTasks = async (payload) => {
   const records = Array.isArray(payload) ? payload : [payload];
   if (!records.length) {
-    const e = new Error("Body vacío");
+    const e = new Error("Empty body");
     e.statusCode = 400;
     throw e;
   }
 
-  const sanitized = records.map(stripReadOnly);
+  const sanitized = records.map(strip_read_only);
 
   try {
-    const ops = sanitized.map((data) => prisma.task.create({ data }));
-    const items = await prisma.$transaction(ops);
+    const ops = sanitized.map((data) => tasksRepo.create(data));
+    const items = await tasksRepo.transaction(ops);
     return { count: items.length, items };
   } catch (err) {
     if (err.code === "P2003") {
-      const e = new Error(
-        "Violación de clave foránea (FK). Verifica catálogos/term."
-      );
+      const e = new Error("Foreign key violation. Check catalog/term references.");
       e.statusCode = 409;
       e.details = err.meta;
       throw e;
     }
     if (err.code === "P2002") {
-      const target = err.meta?.target?.join(", ") || "índice único";
-      const e = new Error(
-        `Duplicado detectado: ya existe una tarea activa con el mismo título y periodo académico (${target}). Si la tarea anterior está completada o archivada, archívala antes de crear una nueva.`
-      );
+      const target = err.meta?.target?.join(", ") ?? "unique index";
+      const e = new Error(`Duplicate detected: active task with same title and academic term already exists (${target}).`);
       e.statusCode = 409;
       e.details = err.meta;
       throw e;
     }
-
     throw err;
   }
 };
 
-/** Actualiza una o varias tareas existentes */
 export const updateTasks = async (payload) => {
   const records = Array.isArray(payload) ? payload : [payload];
   if (!records.length) {
-    const e = new Error("Body vacío");
+    const e = new Error("Empty body");
     e.statusCode = 400;
     throw e;
   }
@@ -203,43 +161,48 @@ export const updateTasks = async (payload) => {
   for (const data of records) {
     const rawId = data.taskId;
     if (!rawId) {
-      const err = new Error("Falta taskId en update");
+      const err = new Error("Missing taskId in update payload");
       err.statusCode = 400;
       throw err;
     }
     const id = String(rawId);
-    const updateData = stripReadOnly({ ...data });
+    const updateData = strip_read_only({ ...data });
     delete updateData.taskId;
 
+    // Resolve flat IDs to Prisma relation syntax
+    if (updateData.taskStatusId !== undefined) {
+      updateData.status = { connect: { taskStatusId: Number(updateData.taskStatusId) } };
+      delete updateData.taskStatusId;
+    }
+    if (updateData.taskPriorityId !== undefined) {
+      updateData.priority = { connect: { taskPriorityId: Number(updateData.taskPriorityId) } };
+      delete updateData.taskPriorityId;
+    }
+    if (updateData.taskTypeId !== undefined) {
+      updateData.type = { connect: { taskTypeId: Number(updateData.taskTypeId) } };
+      delete updateData.taskTypeId;
+    }
+    if ("termId" in updateData) {
+      updateData.term =
+        updateData.termId === null || updateData.termId === ""
+          ? { disconnect: true }
+          : { connect: { termId: Number(updateData.termId) } };
+      delete updateData.termId;
+    }
+
     try {
-      const updated = await prisma.task.update({
-        where: { taskId: id },
-        data: updateData,
-      });
+      const updated = await tasksRepo.update(id, updateData);
       items.push(updated);
     } catch (err) {
-      if (err.code === "P2025") {
-        notFoundIds.push(id);
-        continue;
-      }
+      if (err.code === "P2025") { notFoundIds.push(id); continue; }
       if (err.code === "P2002") {
-        conflictIds.push({
-          id,
-          message:
-            "Conflicto de unicidad: existe otra tarea activa con el mismo título o fecha dentro del mismo periodo.",
-          target: err.meta?.target,
-        });
+        conflictIds.push({ id, message: "Uniqueness conflict: another active task with same title or date exists in the same term.", target: err.meta?.target });
         continue;
       }
       if (err.code === "P2003") {
-        conflictIds.push({
-          id,
-          message: "Violación de clave foránea (FK). Verifica las referencias.",
-          target: err.meta?.target,
-        });
+        conflictIds.push({ id, message: "Foreign key violation. Check your references.", target: err.meta?.target });
         continue;
       }
-
       throw err;
     }
   }
@@ -247,7 +210,6 @@ export const updateTasks = async (payload) => {
   return { count: items.length, items, notFoundIds, conflictIds };
 };
 
-/** Elimina una o varias tareas por id */
 export const deleteTasks = async (ids) => {
   const idArray = (Array.isArray(ids) ? ids : [ids]).map((x) => String(x));
 
@@ -257,17 +219,11 @@ export const deleteTasks = async (ids) => {
 
   for (const id of idArray) {
     try {
-      await prisma.task.delete({ where: { taskId: id } });
+      await tasksRepo.remove(id);
       deletedIds.push(id);
     } catch (err) {
-      if (err.code === "P2025") {
-        notFoundIds.push(id);
-        continue;
-      }
-      if (err.code === "P2003") {
-        blockedIds.push(id);
-        continue;
-      }
+      if (err.code === "P2025") { notFoundIds.push(id); continue; }
+      if (err.code === "P2003") { blockedIds.push(id); continue; }
       throw err;
     }
   }
