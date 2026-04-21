@@ -4,80 +4,84 @@ import {
   createAssignments,
   deleteAssignments,
 } from "#services/taskTagAssignmentsService.js";
+import { ok, created, paginationMeta } from "#utils/response.js";
 
-/** Devuelve listado de asignaciones de etiquetas a tareas con filtros y paginación */
+/** GET /api/v1/task-tag-assignments */
 export const getList = async (req, res, next) => {
   try {
-    const { taskId, tagId, limit, offset, include, orderByField, orderByDir } =
+    const { taskId, tagId, page, pageSize, include, sortBy, sortOrder } =
       req.query;
 
+    const parsedPage = page !== undefined ? Math.max(1, Number(page)) : 1;
+    const parsedPageSize =
+      pageSize !== undefined ? Math.min(200, Math.max(1, Number(pageSize))) : 50;
+    const offset = (parsedPage - 1) * parsedPageSize;
+
     const orderBy =
-      orderByField && orderByDir
-        ? { [orderByField]: orderByDir === "desc" ? "desc" : "asc" }
+      sortBy && sortOrder
+        ? { [sortBy]: sortOrder === "desc" ? "desc" : "asc" }
         : { createdAt: "asc" };
 
     const result = await listAssignments({
       taskId,
       tagId,
-      limit: limit !== undefined ? Number(limit) : undefined,
-      offset: offset !== undefined ? Number(offset) : undefined,
+      limit: parsedPageSize,
+      offset,
       include: include?.toString(),
       orderBy,
     });
 
-    res.json(result);
+    return ok(
+      res,
+      "task_tag_assignment_list",
+      result.items,
+      paginationMeta(parsedPage, parsedPageSize, result.total)
+    );
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Obtiene una asignación por su ID, opcionalmente con relaciones */
+/** GET /api/v1/task-tag-assignments/:id */
 export const getOne = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { include } = req.query;
     const item = await getAssignmentById(id, { include: include?.toString() });
-    res.json(item);
+    return ok(res, "task_tag_assignment_found", item);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Crea una o varias asignaciones de etiquetas a tareas */
+/** POST /api/v1/task-tag-assignments */
 export const createMany = async (req, res, next) => {
   try {
     const payload = req.body;
     if (!payload || (Array.isArray(payload) && payload.length === 0)) {
-      const e = new Error("Body vacío");
+      const e = new Error("Empty body");
       e.statusCode = 400;
       throw e;
     }
     const result = await createAssignments(payload);
-    res.status(201).json(result);
+    return created(res, "task_tag_assignment_created", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Elimina una o varias asignaciones; requiere body.ids (query no permitido) */
+/** DELETE /api/v1/task-tag-assignments */
 export const deleteManyCtrl = async (req, res, next) => {
   try {
-    if (req.query.ids) {
-      const e = new Error(
-        "Usa body: { ids: [...] } (query 'ids' no permitido)"
-      );
-      e.statusCode = 400;
-      throw e;
-    }
     const ids = req.body?.ids;
     if (!Array.isArray(ids) || ids.length === 0) {
-      const e = new Error("Body inválido: se requiere { ids: [...] }");
+      const e = new Error("Invalid body: { ids: [...] } required");
       e.statusCode = 400;
       throw e;
     }
     const result = await deleteAssignments(ids);
-    res.json(result);
+    return ok(res, "task_tag_assignment_deleted", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };

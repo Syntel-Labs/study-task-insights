@@ -3,8 +3,9 @@ import {
   getWeeklyProductivityByYearWeek,
   refreshWeeklyProductivity,
 } from "#services/weeklyProductivityService.js";
+import { ok, paginationMeta } from "#utils/response.js";
 
-/** Listado de productividad semanal con filtros y paginación */
+/** GET /api/v1/weekly-productivity */
 export const getList = async (req, res, next) => {
   try {
     const {
@@ -14,11 +15,16 @@ export const getList = async (req, res, next) => {
       yearTo,
       weekFrom,
       weekTo,
-      limit,
-      offset,
-      orderByField,
-      orderByDir,
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
     } = req.query;
+
+    const parsedPage = page !== undefined ? Math.max(1, Number(page)) : 1;
+    const parsedPageSize =
+      pageSize !== undefined ? Math.min(200, Math.max(1, Number(pageSize))) : 50;
+    const offset = (parsedPage - 1) * parsedPageSize;
 
     const result = await listWeeklyProductivity({
       year: year !== undefined ? Number(year) : undefined,
@@ -27,19 +33,24 @@ export const getList = async (req, res, next) => {
       yearTo: yearTo !== undefined ? Number(yearTo) : undefined,
       weekFrom: weekFrom !== undefined ? Number(weekFrom) : undefined,
       weekTo: weekTo !== undefined ? Number(weekTo) : undefined,
-      limit: limit !== undefined ? Number(limit) : undefined,
-      offset: offset !== undefined ? Number(offset) : undefined,
-      orderByField: orderByField?.toString(),
-      orderByDir: orderByDir?.toString(),
+      limit: parsedPageSize,
+      offset,
+      orderByField: sortBy?.toString(),
+      orderByDir: sortOrder?.toString(),
     });
 
-    res.json(result);
+    return ok(
+      res,
+      "weekly_productivity_list",
+      result.items,
+      paginationMeta(parsedPage, parsedPageSize, result.total)
+    );
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Obtiene un registro de productividad semanal específico por año y semana */
+/** GET /api/v1/weekly-productivity/:year/:week */
 export const getOne = async (req, res, next) => {
   try {
     const { year, week } = req.params;
@@ -47,18 +58,18 @@ export const getOne = async (req, res, next) => {
       Number(year),
       Number(week)
     );
-    res.json(item);
+    return ok(res, "weekly_productivity_found", item);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Refresca la vista materializada de productividad semanal */
+/** POST /api/v1/weekly-productivity/refresh */
 export const refresh = async (_req, res, next) => {
   try {
     const result = await refreshWeeklyProductivity();
-    res.json(result);
+    return ok(res, "weekly_productivity_refreshed", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
