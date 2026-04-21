@@ -212,7 +212,7 @@ export default function WeeklyTrendSection({ items, limitWeeks, swap, setSwap })
         </div>
       </Box>
 
-      <Grid container spacing={2} className={styles.splitRow} wrap="nowrap">
+      <Grid container spacing={3} className={styles.splitRow}>
         <Grid
           item
           xs={12}
@@ -220,9 +220,7 @@ export default function WeeklyTrendSection({ items, limitWeeks, swap, setSwap })
           order={swap ? 2 : 1}
           sx={{
             minWidth: 0,
-            overflow: "hidden",
-            flexBasis: { md: "50%" },
-            maxWidth: { md: "50%" },
+            display: "flex",
           }}
         >
           <motion.div
@@ -230,8 +228,9 @@ export default function WeeklyTrendSection({ items, limitWeeks, swap, setSwap })
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.35 }}
             whileHover={{ y: -2 }}
+            style={{ flex: 1, display: "flex" }}
           >
-            <Paper className={styles.chartCard}>
+            <Paper className={styles.chartCard} sx={{ flex: 1 }}>
               <EChartsReact
                 ref={chartRef}
                 option={chartOption}
@@ -251,17 +250,16 @@ export default function WeeklyTrendSection({ items, limitWeeks, swap, setSwap })
           order={swap ? 1 : 2}
           sx={{
             minWidth: 0,
-            overflow: "hidden",
-            flexBasis: { md: "50%" },
-            maxWidth: { md: "50%" },
+            display: "flex",
           }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.35, delay: 0.05 }}
+            style={{ flex: 1, display: "flex" }}
           >
-            <Paper className={styles.tableCard}>
+            <Paper className={styles.tableCard} sx={{ flex: 1 }}>
               <Typography variant="subtitle2" className={styles.tableTitle}>
                 {t("dashboard.table_lastWeeks", { n: limitWeeks })}
               </Typography>
