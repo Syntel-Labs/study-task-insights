@@ -1,11 +1,12 @@
 import { importBatch } from "#services/batchImportService.js";
+import { created } from "#utils/response.js";
 
-/** Controlador para importar un batch de tasks, assignments y sessions */
+/** POST /api/v1/import/batch */
 export const importBatchCtrl = async (req, res, next) => {
   try {
     const result = await importBatch(req.body);
-    res.json(result);
+    return created(res, "import_batch_created", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };

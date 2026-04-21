@@ -5,8 +5,9 @@ import {
   updateSessions,
   deleteSessions,
 } from "#services/studySessionsService.js";
+import { ok, created, paginationMeta } from "#utils/response.js";
 
-/** Listado de sesiones con filtros y paginación */
+/** GET /api/v1/study-sessions */
 export const getList = async (req, res, next) => {
   try {
     const {
@@ -16,16 +17,21 @@ export const getList = async (req, res, next) => {
       endedFrom,
       endedTo,
       q,
-      limit,
-      offset,
+      page,
+      pageSize,
       include,
-      orderByField,
-      orderByDir,
+      sortBy,
+      sortOrder,
     } = req.query;
 
+    const parsedPage = page !== undefined ? Math.max(1, Number(page)) : 1;
+    const parsedPageSize =
+      pageSize !== undefined ? Math.min(200, Math.max(1, Number(pageSize))) : 50;
+    const offset = (parsedPage - 1) * parsedPageSize;
+
     const orderBy =
-      orderByField && orderByDir
-        ? { [orderByField]: orderByDir === "desc" ? "desc" : "asc" }
+      sortBy && sortOrder
+        ? { [sortBy]: sortOrder === "desc" ? "desc" : "asc" }
         : { startedAt: "asc" };
 
     const result = await listSessions({
@@ -35,81 +41,79 @@ export const getList = async (req, res, next) => {
       endedFrom,
       endedTo,
       q: q?.toString(),
-      limit: limit !== undefined ? Number(limit) : undefined,
-      offset: offset !== undefined ? Number(offset) : undefined,
+      limit: parsedPageSize,
+      offset,
       include: include?.toString(),
       orderBy,
     });
 
-    res.json(result);
+    return ok(
+      res,
+      "study_session_list",
+      result.items,
+      paginationMeta(parsedPage, parsedPageSize, result.total)
+    );
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Obtiene una sesión por ID, opcionalmente con relaciones */
+/** GET /api/v1/study-sessions/:id */
 export const getOne = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { include } = req.query;
     const item = await getSessionById(id, { include: include?.toString() });
-    res.json(item);
+    return ok(res, "study_session_found", item);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Crea una o varias sesiones */
+/** POST /api/v1/study-sessions */
 export const createMany = async (req, res, next) => {
   try {
     const payload = req.body;
     if (!payload || (Array.isArray(payload) && payload.length === 0)) {
-      const e = new Error("Body vacío");
+      const e = new Error("Empty body");
       e.statusCode = 400;
       throw e;
     }
     const result = await createSessions(payload);
-    res.status(201).json(result);
+    return created(res, "study_session_created", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Actualiza una o varias sesiones */
+/** PUT /api/v1/study-sessions */
 export const updateManyCtrl = async (req, res, next) => {
   try {
     const payload = req.body;
     if (!payload || (Array.isArray(payload) && payload.length === 0)) {
-      const e = new Error("Body vacío");
+      const e = new Error("Empty body");
       e.statusCode = 400;
       throw e;
     }
     const result = await updateSessions(payload);
-    res.json(result);
+    return ok(res, "study_session_updated", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/** Elimina una o varias sesiones por body.ids */
+/** DELETE /api/v1/study-sessions */
 export const deleteManyCtrl = async (req, res, next) => {
   try {
-    if (req.query.ids) {
-      const e = new Error(
-        "Usa body: { ids: [...] } (query 'ids' no permitido)"
-      );
-      e.statusCode = 400;
-      throw e;
-    }
     const ids = req.body?.ids;
     if (!Array.isArray(ids) || ids.length === 0) {
-      const e = new Error("Body inválido: se requiere { ids: [...] }");
+      const e = new Error("Invalid body: { ids: [...] } required");
       e.statusCode = 400;
       throw e;
     }
     const result = await deleteSessions(ids);
-    res.json(result);
+    return ok(res, "study_session_deleted", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };

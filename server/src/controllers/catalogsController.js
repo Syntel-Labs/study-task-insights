@@ -5,100 +5,94 @@ import {
   updateCatalog,
   deleteCatalog,
 } from "#services/catalogsService.js";
+import { ok, created, paginationMeta } from "#utils/response.js";
 
-/* obtiene listado de un catálogo según entidad */
+/** GET /api/v1/catalogs/:entity */
 export const getList = async (req, res, next) => {
   try {
     const { entity } = req.params;
-    const { q, limit, offset } = req.query;
+    const { q, page, pageSize } = req.query;
 
-    // pasa los parámetros de búsqueda y paginación al servicio
+    const parsedPage = page !== undefined ? Math.max(1, Number(page)) : 1;
+    const parsedPageSize =
+      pageSize !== undefined ? Math.min(200, Math.max(1, Number(pageSize))) : 50;
+    const offset = (parsedPage - 1) * parsedPageSize;
+
     const result = await listCatalog(entity, {
       q: q?.toString(),
-      limit: limit !== undefined ? Number(limit) : undefined,
-      offset: offset !== undefined ? Number(offset) : undefined,
+      limit: parsedPageSize,
+      offset,
     });
 
-    res.json(result);
+    return ok(
+      res,
+      "catalog_list",
+      result.items,
+      paginationMeta(parsedPage, parsedPageSize, result.total)
+    );
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/* obtiene un registro individual del catálogo */
+/** GET /api/v1/catalogs/:entity/:id */
 export const getOne = async (req, res, next) => {
   try {
     const { entity, id } = req.params;
     const item = await getCatalogById(entity, id);
-    res.json(item);
+    return ok(res, "catalog_found", item);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/* crea uno o varios registros */
+/** POST /api/v1/catalogs/:entity */
 export const createMany = async (req, res, next) => {
   try {
     const { entity } = req.params;
     const payload = req.body;
-
     if (!payload || (Array.isArray(payload) && payload.length === 0)) {
-      const e = new Error("Body vacío");
+      const e = new Error("Empty body");
       e.statusCode = 400;
       throw e;
     }
-
-    // delega la creación al servicio
     const result = await createCatalog(entity, payload);
-    res.status(201).json(result);
+    return created(res, "catalog_created", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/* actualiza uno o varios registros (cada objeto debe tener su ID) */
+/** PUT /api/v1/catalogs/:entity */
 export const updateManyCtrl = async (req, res, next) => {
   try {
     const { entity } = req.params;
     const payload = req.body;
-
     if (!payload || (Array.isArray(payload) && payload.length === 0)) {
-      const e = new Error("Body vacío");
+      const e = new Error("Empty body");
       e.statusCode = 400;
       throw e;
     }
-
     const result = await updateCatalog(entity, payload);
-    res.json(result);
+    return ok(res, "catalog_updated", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
-/* elimina varios registros del catálogo */
+/** DELETE /api/v1/catalogs/:entity */
 export const deleteManyCtrl = async (req, res, next) => {
   try {
     const { entity } = req.params;
-
-    // se evita usar query ?ids=...
-    if (req.query.ids) {
-      const e = new Error(
-        "Usa body: { ids: [...] } (query 'ids' no permitido)"
-      );
-      e.statusCode = 400;
-      throw e;
-    }
-
     const ids = req.body?.ids;
     if (!Array.isArray(ids) || ids.length === 0) {
-      const e = new Error("Body inválido: se requiere { ids: [...] }");
+      const e = new Error("Invalid body: { ids: [...] } required");
       e.statusCode = 400;
       throw e;
     }
-
     const result = await deleteCatalog(entity, ids);
-    res.json(result);
+    return ok(res, "catalog_deleted", result);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
