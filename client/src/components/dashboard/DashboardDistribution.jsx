@@ -30,9 +30,10 @@ export default function DashboardDistribution() {
   useEffect(() => {
     let active = true;
     listTasks({ include: "all", pageSize: 500, archived: false })
-      .then((data) => {
+      .then((resp) => {
         if (!active) return;
-        setTasks(data?.items || data?.data || []);
+        const rows = Array.isArray(resp?.data) ? resp.data : resp?.data?.items ?? resp?.items ?? [];
+        setTasks(rows);
       })
       .catch(() => setTasks([]));
     return () => {
