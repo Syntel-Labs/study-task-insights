@@ -70,6 +70,70 @@ export default function ThemedApp() {
               },
             },
           },
+          MuiModal: {
+            defaultProps: {
+              closeAfterTransition: true,
+            },
+          },
+          MuiMenu: {
+            defaultProps: {
+              disableScrollLock: true,
+            },
+            styleOverrides: {
+              paper: {
+                backgroundColor: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+                border: "1px solid var(--color-border)",
+              },
+            },
+          },
+          MuiMenuItem: {
+            styleOverrides: {
+              root: {
+                color: "var(--color-text-primary)",
+                "&:hover": { backgroundColor: "var(--color-surface-2)" },
+                "&.Mui-selected": {
+                  backgroundColor: "var(--color-primary-weak)",
+                  color: "var(--color-primary)",
+                },
+              },
+            },
+          },
+          MuiDialog: {
+            styleOverrides: {
+              paper: {
+                backgroundColor: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+                backgroundImage: "none",
+              },
+            },
+          },
+          MuiInputLabel: {
+            styleOverrides: {
+              root: { color: "var(--color-text-secondary)" },
+            },
+          },
+          MuiOutlinedInput: {
+            styleOverrides: {
+              root: {
+                color: "var(--color-text-primary)",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--input-border)",
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--input-border-hover)",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--input-border-focus)",
+                },
+              },
+            },
+          },
+          MuiSelect: {
+            styleOverrides: {
+              icon: { color: "var(--color-text-secondary)" },
+            },
+          },
         },
       }),
     [isDark]
