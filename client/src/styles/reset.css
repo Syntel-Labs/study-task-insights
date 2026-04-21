@@ -28,9 +28,10 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow-y: auto; /* Solo muestra scroll vertical si es necesario */
+  overflow-y: auto;
   font-family: sans-serif;
-  background-color: #f8f9f8;
+  background-color: var(--color-background, #f8f9f8);
+  color: var(--color-text-primary, #1c1c1e);
 }
 
 * {

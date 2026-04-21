@@ -134,10 +134,21 @@
 
   --color-background:     #0f141b;
   --color-surface:        #121923;
-  --color-surface-2:      #0f1823;
+  --color-surface-2:      #1a2433;
 
   --color-border:         #2a3645;
   --color-divider:        #1f2a37;
+
+  /* Redefinir neutrales para componentes legacy que los usan como fondo */
+  --neutral-50:  #151d28;
+  --neutral-100: #1a2433;
+  --neutral-200: #202c3c;
+  --neutral-300: #2a3645;
+  --neutral-400: #3a4757;
+
+  /* Weak backgrounds tintados a primary */
+  --color-primary-weak:   rgba(92, 126, 163, 0.18);
+  --brand-primary-50:     rgba(92, 126, 163, 0.14);
 
   --input-bg:             #0f1823;
   --input-border:         #2a3645;
