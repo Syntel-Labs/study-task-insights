@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "nodemon",
     "start": "node server.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -38,9 +40,13 @@
     "#routes/*": "./src/routes/*",
     "#middlewares/*": "./src/middlewares/*",
     "#services/*": "./src/services/*",
+    "#repositories/*": "./src/repositories/*",
+    "#utils/*": "./src/utils/*",
     "#generated/*": "./generated/*"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
     "nodemon": "^3.1.10",
     "prisma": "^6.18.0"
   },
