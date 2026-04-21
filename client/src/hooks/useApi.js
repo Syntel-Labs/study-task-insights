@@ -6,35 +6,13 @@ export function bulkify(input) {
 }
 
 export function useApi() {
-  const DEBUG_API = false;
-
   const request = useCallback(async (path, options = {}) => {
-    const {
-      method = "GET",
-      headers = {},
-      body,
-      useJson = true,
-      query,
-    } = options;
+    const { method = "GET", headers = {}, body, useJson = true, query } = options;
 
     const url = buildApiUrl(path, query);
-
     const finalHeaders = new Headers(headers);
     if (useJson && body !== undefined)
       finalHeaders.set("Content-Type", "application/json");
-
-    // request
-    const startedAt = performance.now();
-    if (DEBUG_API) {
-      const safeHeaders = {};
-      finalHeaders.forEach((v, k) => (safeHeaders[k] = v));
-      console.log("[API] >>>", {
-        method,
-        url,
-        headers: safeHeaders,
-        body: useJson && body !== undefined ? body : "(raw body)",
-      });
-    }
 
     let resp;
     try {
@@ -50,25 +28,15 @@ export function useApi() {
         credentials: "include",
       });
     } catch (networkErr) {
-      if (DEBUG_API) {
-        console.error("[API] NETWORK ERROR <<<", {
-          method,
-          url,
-          error: networkErr,
-        });
-      }
       throw networkErr;
     }
-
-    const elapsed = (performance.now() - startedAt).toFixed(1);
 
     if (resp.status === 401 || resp.status === 403) {
       window.dispatchEvent(new CustomEvent("stia:unauthorized"));
     }
 
-    // clon para poder leer texto “raw” además del parseo
     const clone = resp.clone();
-    const contentType = resp.headers.get("content-type") || "";
+    const contentType = resp.headers.get("content-type") ?? "";
     let rawText = "";
     try {
       rawText = await clone.text();
@@ -78,28 +46,9 @@ export function useApi() {
 
     let data;
     try {
-      data = contentType.includes("application/json")
-        ? await resp.json()
-        : rawText;
-    } catch (parseErr) {
-      // si falló el parseo json obtener raw
+      data = contentType.includes("application/json") ? await resp.json() : rawText;
+    } catch {
       data = rawText;
-    }
-
-    // response
-    if (DEBUG_API) {
-      console.log("[API] <<<", {
-        method,
-        url,
-        status: resp.status,
-        ok: resp.ok,
-        contentType,
-        elapsedMs: Number(elapsed),
-
-        data: contentType.includes("application/json")
-          ? data
-          : (rawText || "").slice(0, 800),
-      });
     }
 
     if (!resp.ok) {
@@ -129,7 +78,7 @@ export function useApi() {
     [request]
   );
   const del = useCallback(
-    (path, options = {}) => request(path, { method: "DELETE", ...options }),
+    (path, opts = {}) => request(path, { method: "DELETE", ...opts }),
     [request]
   );
 
