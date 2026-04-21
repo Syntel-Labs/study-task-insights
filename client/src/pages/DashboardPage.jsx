@@ -1,15 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import { Stack, Box, Divider } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import { useWeeklyProductivityApi } from "@hooks/api/weeklyProductivity.js";
 import { useAuth } from "@context/AuthContext.jsx";
 import DashboardHeader from "@components/dashboard/DashboardHeader.jsx";
 import DashboardKpis from "@components/dashboard/DashboardKpis.jsx";
 import WeeklyTrendSection from "@components/dashboard/WeeklyTrendSection.jsx";
+import DashboardDistribution from "@components/dashboard/DashboardDistribution.jsx";
 import styles from "@styles/dashboard.module.scss";
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { list, refresh: refreshMetrics } = useWeeklyProductivityApi();
   const { isAuthenticated } = useAuth();
   const [items, setItems] = useState([]);
@@ -35,28 +38,37 @@ export default function DashboardPage() {
     }
   }
 
+  function translateServerCode(code) {
+    if (!code) return null;
+    const key = `messages.${code}`;
+    const translated = t(key);
+    return translated === key ? null : translated;
+  }
+
   async function handleRefresh() {
     try {
       setUpdating(true);
       const resp = await refreshMetrics();
       await load();
-      Swal.fire(
-        "Métricas actualizadas",
-        resp?.message || "Se recalcularon las métricas.",
-        "success"
-      );
+      const serverMsg = translateServerCode(resp?.code || resp?.message);
+      Swal.fire({
+        icon: "success",
+        title: t("messages.metrics_updated"),
+        text: serverMsg || t("messages.weekly_productivity_refreshed"),
+        timer: 1800,
+        showConfirmButton: false,
+      });
     } catch (e) {
-      Swal.fire(
-        "Error",
-        e?.message || "No se pudieron actualizar las métricas.",
-        "error"
-      );
+      Swal.fire({
+        icon: "error",
+        title: t("common.error"),
+        text: e?.message || t("messages.metrics_error"),
+      });
     } finally {
       setUpdating(false);
     }
   }
 
-  // carga inicial y cuando cambie el límite (solo si hay sesión)
   useEffect(() => {
     load();
   }, [isAuthenticated, limitWeeks]);
@@ -97,6 +109,8 @@ export default function DashboardPage() {
         swap={swap}
         setSwap={setSwap}
       />
+
+      <DashboardDistribution />
     </Stack>
   );
 }
