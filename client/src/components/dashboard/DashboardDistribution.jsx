@@ -147,15 +147,16 @@ export default function DashboardDistribution() {
   return (
     <>
       <Divider />
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6} sx={{ display: "flex" }}>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             whileHover={{ y: -3 }}
+            style={{ flex: 1, display: "flex" }}
           >
-            <Paper className={styles.chartCard}>
+            <Paper className={styles.chartCard} sx={{ flex: 1 }}>
               <Typography variant="subtitle2" className={styles.tableTitle}>
                 {t("dashboard.distribution_title")}
               </Typography>
@@ -173,14 +174,15 @@ export default function DashboardDistribution() {
           </motion.div>
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={6} sx={{ display: "flex" }}>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
             whileHover={{ y: -3 }}
+            style={{ flex: 1, display: "flex" }}
           >
-            <Paper className={styles.chartCard}>
+            <Paper className={styles.chartCard} sx={{ flex: 1 }}>
               <Typography variant="subtitle2" className={styles.tableTitle}>
                 {t("dashboard.priority_title")}
               </Typography>
