@@ -221,6 +221,19 @@ export default function LlmPage() {
             {busy && (
               <Box className={styles.loadingSkeleton}>
                 <div className={styles.shimmer} />
+                <motion.div
+                  className={styles.thinking}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <span>{t("llm.thinking")}</span>
+                  <span className={styles.dotWrap}>
+                    <span className={styles.dot} />
+                    <span className={styles.dot} />
+                    <span className={styles.dot} />
+                  </span>
+                </motion.div>
               </Box>
             )}
 
