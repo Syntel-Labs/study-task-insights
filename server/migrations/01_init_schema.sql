@@ -1,42 +1,50 @@
+-- 0) Esquema dedicado sti y search_path
+CREATE SCHEMA IF NOT EXISTS sti;
+SET search_path TO sti, public;
+
 -- 1) DROP en orden seguro
-DROP MATERIALIZED VIEW IF EXISTS weekly_productivity CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS sti.weekly_productivity CASCADE;
 DROP TABLE IF EXISTS
-    study_sessions,
-    task_tag_assignments,
-    tasks,
-    task_tags,
-    task_types,
-    task_priorities,
-    task_statuses,
-    terms
+    sti.study_sessions,
+    sti.task_tag_assignments,
+    sti.tasks,
+    sti.task_tags,
+    sti.task_types,
+    sti.task_priorities,
+    sti.task_statuses,
+    sti.terms
 CASCADE;
 
 -- 2) DROP de ENUMs si existieran
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'term_status') THEN
-        DROP TYPE term_status;
+    IF EXISTS (
+        SELECT 1 FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'term_status' AND n.nspname = 'sti'
+    ) THEN
+        DROP TYPE sti.term_status;
     END IF;
 END$$;
 
 -- 3) ENUMs
-CREATE TYPE term_status AS ENUM ('active', 'inactive');
+CREATE TYPE sti.term_status AS ENUM ('active', 'inactive');
 
 -- 4) CATÁLOGOS
 -- 4.1 terms
-CREATE TABLE terms (
+CREATE TABLE sti.terms (
     term_id      SMALLSERIAL PRIMARY KEY,
     name         VARCHAR(80) UNIQUE NOT NULL,
     start_date   DATE NOT NULL,
     end_date     DATE NOT NULL,
-    status       term_status NOT NULL DEFAULT 'active',
+    status       sti.term_status NOT NULL DEFAULT 'active',
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (start_date <= end_date)
 );
 
 -- 4.2 task_statuses
-CREATE TABLE task_statuses (
+CREATE TABLE sti.task_statuses (
     task_status_id SMALLSERIAL PRIMARY KEY,
     code           VARCHAR(40) UNIQUE NOT NULL,
     description    VARCHAR(160),
@@ -45,7 +53,7 @@ CREATE TABLE task_statuses (
 );
 
 -- 4.3 task_priorities
-CREATE TABLE task_priorities (
+CREATE TABLE sti.task_priorities (
     task_priority_id SMALLSERIAL PRIMARY KEY,
     code             VARCHAR(30) UNIQUE NOT NULL,
     weight           SMALLINT NOT NULL DEFAULT 0,
@@ -53,7 +61,7 @@ CREATE TABLE task_priorities (
 );
 
 -- 4.4 task_types
-CREATE TABLE task_types (
+CREATE TABLE sti.task_types (
     task_type_id SMALLSERIAL PRIMARY KEY,
     code         VARCHAR(40) UNIQUE NOT NULL,
     description  VARCHAR(160),
@@ -61,7 +69,7 @@ CREATE TABLE task_types (
 );
 
 -- 4.5 task_tags
-CREATE TABLE task_tags (
+CREATE TABLE sti.task_tags (
     task_tag_id UUID PRIMARY KEY,
     name        VARCHAR(50) UNIQUE NOT NULL,
     color       VARCHAR(20),
@@ -70,12 +78,12 @@ CREATE TABLE task_tags (
 
 -- 5) PRINCIPALES
 -- 5.1 tasks
-CREATE TABLE tasks (
+CREATE TABLE sti.tasks (
     task_id           UUID PRIMARY KEY,
-    term_id           SMALLINT REFERENCES terms(term_id) ON DELETE RESTRICT,
-    task_status_id    SMALLINT NOT NULL REFERENCES task_statuses(task_status_id) ON DELETE RESTRICT,
-    task_priority_id  SMALLINT NOT NULL REFERENCES task_priorities(task_priority_id) ON DELETE RESTRICT,
-    task_type_id      SMALLINT NOT NULL REFERENCES task_types(task_type_id) ON DELETE RESTRICT,
+    term_id           SMALLINT REFERENCES sti.terms(term_id) ON DELETE RESTRICT,
+    task_status_id    SMALLINT NOT NULL REFERENCES sti.task_statuses(task_status_id) ON DELETE RESTRICT,
+    task_priority_id  SMALLINT NOT NULL REFERENCES sti.task_priorities(task_priority_id) ON DELETE RESTRICT,
+    task_type_id      SMALLINT NOT NULL REFERENCES sti.task_types(task_type_id) ON DELETE RESTRICT,
     title             VARCHAR(160) NOT NULL,
     description       TEXT,
     due_at            TIMESTAMPTZ,
@@ -88,18 +96,18 @@ CREATE TABLE tasks (
 );
 
 -- 5.2 task_tag_assignments (N:M)
-CREATE TABLE task_tag_assignments (
+CREATE TABLE sti.task_tag_assignments (
     task_tag_assignment_id UUID PRIMARY KEY,
-    task_id                UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
-    task_tag_id            UUID NOT NULL REFERENCES task_tags(task_tag_id) ON DELETE RESTRICT,
+    task_id                UUID NOT NULL REFERENCES sti.tasks(task_id) ON DELETE CASCADE,
+    task_tag_id            UUID NOT NULL REFERENCES sti.task_tags(task_tag_id) ON DELETE RESTRICT,
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_task_tag UNIQUE (task_id, task_tag_id)
 );
 
 -- 5.3 study_sessions
-CREATE TABLE study_sessions (
+CREATE TABLE sti.study_sessions (
     study_session_id UUID PRIMARY KEY,
-    task_id          UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+    task_id          UUID NOT NULL REFERENCES sti.tasks(task_id) ON DELETE CASCADE,
     started_at       TIMESTAMPTZ NOT NULL,
     ended_at         TIMESTAMPTZ NOT NULL,
     duration_minutes INTEGER GENERATED ALWAYS AS (
@@ -111,7 +119,7 @@ CREATE TABLE study_sessions (
 );
 
 -- 5.4 weekly_productivity (materialized view)
-CREATE MATERIALIZED VIEW weekly_productivity AS
+CREATE MATERIALIZED VIEW sti.weekly_productivity AS
 SELECT
   gen_random_uuid()                                         AS weekly_productivity_id,
   EXTRACT(YEAR FROM ss.started_at)::int                     AS iso_year,
@@ -149,7 +157,6 @@ SELECT
   COALESCE(SUM(t.estimated_minutes), 0)::int                AS planned_minutes,
   COALESCE(SUM(ss.duration_minutes), 0)::int                AS actual_minutes,
 
-  /* promedio en minutos entre creación y completado, solo tareas completadas esa semana */
   COALESCE(ROUND(AVG(
     EXTRACT(EPOCH FROM (t.completed_at - t.created_at)) / 60.0
   ) FILTER (
@@ -159,31 +166,31 @@ SELECT
 
   now()                                                     AS created_at,
   now()                                                     AS updated_at
-FROM tasks t
-LEFT JOIN study_sessions ss ON ss.task_id = t.task_id
+FROM sti.tasks t
+LEFT JOIN sti.study_sessions ss ON ss.task_id = t.task_id
 GROUP BY iso_year, iso_week;
 
 -- índice único
-CREATE UNIQUE INDEX uq_weekly_productivity_week ON weekly_productivity (iso_year, iso_week);
+CREATE UNIQUE INDEX uq_weekly_productivity_week ON sti.weekly_productivity (iso_year, iso_week);
 
--- 6) ÍNDICES (según consultas típicas)
+-- 6) ÍNDICES
 -- tasks
-CREATE INDEX idx_tasks_status        ON tasks (task_status_id);
-CREATE INDEX idx_tasks_priority      ON tasks (task_priority_id);
-CREATE INDEX idx_tasks_due_at        ON tasks (due_at);
-CREATE INDEX idx_tasks_term_due      ON tasks (term_id, due_at);
+CREATE INDEX idx_tasks_status        ON sti.tasks (task_status_id);
+CREATE INDEX idx_tasks_priority      ON sti.tasks (task_priority_id);
+CREATE INDEX idx_tasks_due_at        ON sti.tasks (due_at);
+CREATE INDEX idx_tasks_term_due      ON sti.tasks (term_id, due_at);
 CREATE UNIQUE INDEX ux_tasks_active_term_title_due
-  ON tasks (term_id, lower(btrim(title)), due_at)
+  ON sti.tasks (term_id, lower(btrim(title)), due_at)
   WHERE archived_at IS NULL
     AND due_at IS NOT NULL;
 CREATE UNIQUE INDEX ux_tasks_active_term_title_nodue
-  ON tasks (term_id, lower(btrim(title)))
+  ON sti.tasks (term_id, lower(btrim(title)))
   WHERE archived_at IS NULL
     AND due_at IS NULL;
 
 -- task_tag_assignments
-CREATE INDEX idx_task_tag_assign_task  ON task_tag_assignments (task_id);
-CREATE INDEX idx_task_tag_assign_tag   ON task_tag_assignments (task_tag_id);
+CREATE INDEX idx_task_tag_assign_task  ON sti.task_tag_assignments (task_id);
+CREATE INDEX idx_task_tag_assign_tag   ON sti.task_tag_assignments (task_tag_id);
 
 -- study_sessions
-CREATE INDEX idx_study_sessions_task_started ON study_sessions (task_id, started_at);
+CREATE INDEX idx_study_sessions_task_started ON sti.study_sessions (task_id, started_at);

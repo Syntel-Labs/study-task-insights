@@ -1,11 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../generated/prisma"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["sti"]
 }
 
 enum TermStatus {
@@ -13,6 +15,7 @@ enum TermStatus {
   inactive
 
   @@map("term_status")
+  @@schema("sti")
 }
 
 // CATÁLOGOS
@@ -28,6 +31,7 @@ model Term {
   tasks Task[]
 
   @@map("terms")
+  @@schema("sti")
 }
 
 model TaskStatus {
@@ -40,6 +44,7 @@ model TaskStatus {
   tasks Task[]
 
   @@map("task_statuses")
+  @@schema("sti")
 }
 
 model TaskPriority {
@@ -51,6 +56,7 @@ model TaskPriority {
   tasks Task[]
 
   @@map("task_priorities")
+  @@schema("sti")
 }
 
 model TaskType {
@@ -62,6 +68,7 @@ model TaskType {
   tasks Task[]
 
   @@map("task_types")
+  @@schema("sti")
 }
 
 model TaskTag {
@@ -73,9 +80,10 @@ model TaskTag {
   assignments TaskTagAssignment[]
 
   @@map("task_tags")
+  @@schema("sti")
 }
 
-// PRINCIPALES 
+// PRINCIPALES
 model Task {
   taskId         String    @id @default(uuid()) @map("task_id") @db.Uuid
   termId         Int?      @map("term_id") @db.SmallInt
@@ -104,6 +112,7 @@ model Task {
   @@index([dueAt], name: "idx_tasks_due_at")
   @@index([termId, dueAt], name: "idx_tasks_term_due")
   @@map("tasks")
+  @@schema("sti")
 }
 
 model TaskTagAssignment {
@@ -119,6 +128,7 @@ model TaskTagAssignment {
   @@index([taskId], name: "idx_task_tag_assign_task")
   @@index([taskTagId], name: "idx_task_tag_assign_tag")
   @@map("task_tag_assignments")
+  @@schema("sti")
 }
 
 model StudySession {
@@ -134,4 +144,5 @@ model StudySession {
 
   @@index([taskId, startedAt], name: "idx_study_sessions_task_started")
   @@map("study_sessions")
+  @@schema("sti")
 }
