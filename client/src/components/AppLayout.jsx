@@ -3,7 +3,6 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
-  Typography,
   Box,
   Button,
   IconButton,
@@ -16,7 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faRightFromBracket,
   faMoon,
-  faSun,
+  faLightbulb,
   faGauge,
   faListCheck,
   faFolderTree,
@@ -49,16 +48,6 @@ export default function AppLayout() {
     <div className={styles.layoutRoot}>
       <AppBar position="fixed" elevation={1} className={styles.appBar}>
         <Toolbar className={styles.toolbar}>
-          <motion.div
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <Typography variant="h6" className={styles.brand}>
-              {t("app.brand")}
-            </Typography>
-          </motion.div>
-
           <nav className={styles.nav}>
             {navItems.map((item, i) => (
               <motion.div
@@ -102,13 +91,13 @@ export default function AppLayout() {
                 aria-label="toggle theme"
               >
                 <motion.span
-                  key={isDark ? "moon" : "sun"}
+                  key={isDark ? "light" : "dark"}
                   initial={{ rotate: -90, opacity: 0 }}
                   animate={{ rotate: 0, opacity: 1 }}
                   transition={{ duration: 0.3 }}
                   style={{ display: "inline-flex" }}
                 >
-                  <FontAwesomeIcon icon={isDark ? faSun : faMoon} />
+                  <FontAwesomeIcon icon={isDark ? faLightbulb : faMoon} />
                 </motion.span>
               </IconButton>
             </Tooltip>
