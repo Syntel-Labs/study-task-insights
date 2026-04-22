@@ -37,16 +37,6 @@ app.use(requestLogger);
 
 app.use("/gate", gateRoutes);
 
-app.use(accessGate);
-
-app.use("/api/v1/catalogs", catalogsRoutes);
-app.use("/api/v1/tasks", tasksRoutes);
-app.use("/api/v1/task-tag-assignments", taskTagAssignmentsRoutes);
-app.use("/api/v1/study-sessions", studySessionsRoutes);
-app.use("/api/v1/weekly-productivity", weeklyProductivityRoutes);
-app.use("/api/v1/import/batch", batchImportRoutes);
-app.use("/api/v1/llm", llmRoutes);
-
 app.get("/healthz", (_req, res) => {
   res.json({
     status: "ok",
@@ -56,6 +46,16 @@ app.get("/healthz", (_req, res) => {
     env: process.env.NODE_ENV,
   });
 });
+
+app.use(accessGate);
+
+app.use("/api/v1/catalogs", catalogsRoutes);
+app.use("/api/v1/tasks", tasksRoutes);
+app.use("/api/v1/task-tag-assignments", taskTagAssignmentsRoutes);
+app.use("/api/v1/study-sessions", studySessionsRoutes);
+app.use("/api/v1/weekly-productivity", weeklyProductivityRoutes);
+app.use("/api/v1/import/batch", batchImportRoutes);
+app.use("/api/v1/llm", llmRoutes);
 
 app.use(errorHandler);
 
