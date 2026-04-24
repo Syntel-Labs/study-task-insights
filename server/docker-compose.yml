@@ -4,10 +4,33 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
+# Configuracion base compartida entre hermes (CPU) y hermes-gpu.
+# Mismo volumen sti_ollama => los modelos descargados persisten al cambiar de perfil.
+# Mismo hostname DNS 'hermes' => apollo sigue usando OLLAMA_URL=http://hermes:11434 sin cambios.
+# OJO: ambos pueden coexistir levantados, pero no se debe invocar inferencia en los dos
+# a la vez porque comparten el directorio de modelos y se corrompe el estado.
+x-hermes-base: &hermes-base
+  image: ollama/ollama:latest
+  volumes:
+    - sti_ollama:/root/.ollama
+    - ./scripts:/scripts:ro
+  environment:
+    - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:--1}
+    - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-1}
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "ollama", "list"]
+    interval: 10s
+    timeout: 5s
+    start_period: 30s
+    retries: 30
+  logging: *default-logging
+
 services:
   atlas:
     image: postgres:16
     container_name: sti-atlas
+    profiles: ["cpu", "gpu"]
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
@@ -26,29 +49,44 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  # Modo CPU (perfil por defecto)
   hermes:
-    image: ollama/ollama:latest
+    <<: *hermes-base
     container_name: sti-hermes
-    volumes:
-      - sti_ollama:/root/.ollama
-      - ./scripts:/scripts:ro
-    environment:
-      - OLLAMA_KEEP_ALIVE=-1
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      start_period: 30s
-      retries: 30
-    logging: *default-logging
+    profiles: ["cpu"]
+
+  # Modo GPU (requiere nvidia-container-toolkit + driver NVIDIA en el host).
+  # Mismo hostname DNS que 'hermes' (el nombre corto del servicio NO es DNS;
+  # quien resuelve es el alias, que aqui igualamos via network_mode implicito
+  # = mismo network, pero el hostname diferira). Para que apollo no tenga que
+  # cambiar su OLLAMA_URL, usamos 'links-style' via aliases en la red default.
+  hermes-gpu:
+    <<: *hermes-base
+    container_name: sti-hermes-gpu
+    profiles: ["gpu"]
+    networks:
+      default:
+        aliases:
+          - hermes
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   prometheus:
     image: ollama/ollama:latest
     container_name: sti-prometheus
+    profiles: ["cpu", "gpu"]
     depends_on:
       hermes:
         condition: service_healthy
+        required: false
+      hermes-gpu:
+        condition: service_healthy
+        required: false
     environment:
       OLLAMA_HOST: http://hermes:11434
     entrypoint: ["/bin/sh", "-c"]
@@ -67,6 +105,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sti-apollo
+    profiles: ["cpu", "gpu"]
     depends_on:
       atlas:
         condition: service_healthy
