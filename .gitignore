@@ -146,4 +146,4 @@ generated/
 
 # claude
 .claude/
-.mcp.json
+.mcp.jsonclient/qa/*.json
