@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
 import gateRoutes from "#routes/gateRoutes.js";
@@ -16,6 +17,16 @@ import { errorHandler } from "#middlewares/errorHandler.js";
 import { accessGate } from "#middlewares/accessGate.js";
 
 const app = express();
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
