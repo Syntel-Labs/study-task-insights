@@ -14,7 +14,7 @@ export function useTasksFilters() {
   const [sortBy, setSortBy] = useState("dueAt");
   const [sortOrder, setSortOrder] = useState("asc");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
 
   // Draft filters (not yet applied)
   const [draft, setDraft] = useState({
@@ -76,7 +76,7 @@ export function useTasksFilters() {
     q, setQ,
     archived, setArchived,
     sortBy, sortOrder, handleSort,
-    page, setPage, pageSize,
+    page, setPage, pageSize, setPageSize,
     draft, setDraft,
     syncDraftFromApplied, applyFilters, clearDraft,
     apiQuery,
