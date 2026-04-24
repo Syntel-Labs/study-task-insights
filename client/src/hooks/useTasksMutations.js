@@ -1,5 +1,7 @@
 import { useState } from "react";
-import Swal from "sweetalert2";
+import { toast } from "sonner";
+
+const msg = (e, fallback) => e?.payload?.message || e?.message || fallback;
 
 /** Handles all task mutation operations: create, update, delete, bulk actions */
 export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
@@ -18,11 +20,11 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
           tagIds.map((id) => tagAssignApi.add({ taskId: newId, taskTagId: id }))
         );
       }
-      await Swal.fire("Creada", "La tarea fue creada correctamente.", "success");
+      toast.success("Tarea creada");
       await onRefresh();
       return true;
     } catch (e) {
-      await Swal.fire("Error", e?.payload?.message || e?.message || "No se pudo crear", "error");
+      toast.error("No se pudo crear", { description: msg(e, "Error") });
       return false;
     } finally {
       setMutating(false);
@@ -38,11 +40,11 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
 
       const { tagIds: _tags, taskId: _tid, ...rest } = payload;
       await tasksApi.update([{ taskId: id, ...rest }]);
-      await Swal.fire("Guardado", "Cambios aplicados.", "success");
+      toast.success("Cambios guardados");
       await onRefresh();
       return true;
     } catch (e) {
-      await Swal.fire("Error", e?.payload?.message || e?.message || "No se pudo guardar", "error");
+      toast.error("No se pudo guardar", { description: msg(e, "Error") });
       return false;
     } finally {
       setMutating(false);
@@ -58,10 +60,10 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
         completedAt: new Date().toISOString(),
         ...(typeof opts?.actualMin === "number" ? { actualMin: opts.actualMin } : {}),
       }]);
-      Swal.fire("Completada", "La tarea fue marcada como completada.", "success");
+      toast.success("Tarea completada");
       await onRefresh();
     } catch (e) {
-      Swal.fire("Error", e?.payload?.message || e?.message || "No se pudo completar", "error");
+      toast.error("No se pudo completar", { description: msg(e, "Error") });
     } finally {
       setMutating(false);
     }
@@ -72,10 +74,10 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
     setMutating(true);
     try {
       await tasksApi.update([{ taskId: task.id, archivedAt: new Date().toISOString() }]);
-      Swal.fire("Archivada", "La tarea fue archivada.", "success");
+      toast.success("Tarea archivada");
       await onRefresh();
     } catch (e) {
-      Swal.fire("Error", e?.payload?.message || e?.message || "No se pudo archivar", "error");
+      toast.error("No se pudo archivar", { description: msg(e, "Error") });
     } finally {
       setMutating(false);
     }
@@ -88,10 +90,10 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
       const id = String(task?.id ?? task?.taskId ?? "").trim();
       if (!/^[0-9a-fA-F-]{36}$/.test(id)) throw new Error(`Invalid taskId: "${id}"`);
       await tasksApi.remove([id]);
-      Swal.fire("Eliminada", "La tarea fue eliminada.", "success");
+      toast.success("Tarea eliminada");
       await onRefresh();
     } catch (e) {
-      Swal.fire("Error", e?.payload?.message || e?.message || "No se pudo eliminar", "error");
+      toast.error("No se pudo eliminar", { description: msg(e, "Error") });
     } finally {
       setMutating(false);
     }
@@ -109,10 +111,10 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
           ...(typeof opts?.actualMin === "number" ? { actualMin: opts.actualMin } : {}),
         }))
       );
-      Swal.fire("Completadas", "Tareas marcadas como completadas.", "success");
+      toast.success("Tareas completadas");
       await onRefresh();
     } catch (e) {
-      Swal.fire("Error", e?.payload?.message || e?.message || "No se pudieron completar", "error");
+      toast.error("No se pudieron completar", { description: msg(e, "Error") });
     } finally {
       setMutating(false);
     }
@@ -124,10 +126,10 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
     try {
       const now = new Date().toISOString();
       await tasksApi.update(Array.from(selectedIds).map((id) => ({ taskId: id, archivedAt: now })));
-      Swal.fire("Archivadas", "Tareas archivadas.", "success");
+      toast.success("Tareas archivadas");
       await onRefresh();
     } catch (e) {
-      Swal.fire("Error", e?.payload?.message || e?.message || "No se pudieron archivar", "error");
+      toast.error("No se pudieron archivar", { description: msg(e, "Error") });
     } finally {
       setMutating(false);
     }
@@ -138,10 +140,10 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
     setMutating(true);
     try {
       await tasksApi.remove(Array.from(selectedIds));
-      Swal.fire("Eliminadas", "Tareas eliminadas.", "success");
+      toast.success("Tareas eliminadas");
       await onRefresh();
     } catch (e) {
-      Swal.fire("Error", e?.payload?.message || e?.message || "No se pudieron eliminar", "error");
+      toast.error("No se pudieron eliminar", { description: msg(e, "Error") });
     } finally {
       setMutating(false);
     }
@@ -160,10 +162,10 @@ export function useTasksMutations({ tasksApi, tagAssignApi, onRefresh }) {
           ...(chosen?.isFinal ? { completedAt: now } : {}),
         }))
       );
-      Swal.fire("Estados aplicados", `${selectedIds.size} tarea(s) actualizadas.`, "success");
+      toast.success(`${selectedIds.size ?? selectedIds.length} tarea(s) actualizadas`);
       await onRefresh();
     } catch (e) {
-      Swal.fire("Error", e?.payload?.message || e?.message || "No se pudo cambiar el estado", "error");
+      toast.error("No se pudo cambiar el estado", { description: msg(e, "Error") });
     } finally {
       setMutating(false);
     }
