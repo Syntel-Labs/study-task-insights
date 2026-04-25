@@ -3,7 +3,7 @@
 ## Introducción
 
 El módulo `studySessionsRoutes.js` define los endpoints REST para manejar las **sesiones de estudio** vinculadas a tareas.  
-Cada ruta se registra bajo `/api/study-sessions` y delega su ejecución a `studySessionsController.js`.
+Cada ruta se registra bajo `/api/v1/study-sessions` y delega su ejecución a `studySessionsController.js`.
 
 ## Descripción general
 
@@ -14,7 +14,7 @@ Cada sesión está asociada a una tarea específica (`taskId`).
 
 ```mermaid
 flowchart TD
-  A[Cliente HTTP] --> B[Express Router /api/study-sessions]
+  A[Cliente HTTP] --> B[Express Router /api/v1/study-sessions]
   B --> C{Método HTTP}
   C -->|GET /| D[getList]
   C -->|GET /:id| E[getOne]
@@ -30,11 +30,11 @@ flowchart TD
 
 | Método   | Ruta                      | Descripción                                 | Controlador      |
 | -------- | ------------------------- | ------------------------------------------- | ---------------- |
-| `GET`    | `/api/study-sessions`     | Lista sesiones filtradas y paginadas.       | `getList`        |
-| `GET`    | `/api/study-sessions/:id` | Obtiene una sesión específica por ID.       | `getOne`         |
-| `POST`   | `/api/study-sessions`     | Crea una o varias sesiones nuevas.          | `createMany`     |
-| `PUT`    | `/api/study-sessions`     | Actualiza una o varias sesiones existentes. | `updateManyCtrl` |
-| `DELETE` | `/api/study-sessions`     | Elimina varias sesiones según `body.ids`.   | `deleteManyCtrl` |
+| `GET`    | `/api/v1/study-sessions`     | Lista sesiones filtradas y paginadas.       | `getList`        |
+| `GET`    | `/api/v1/study-sessions/:id` | Obtiene una sesión específica por ID.       | `getOne`         |
+| `POST`   | `/api/v1/study-sessions`     | Crea una o varias sesiones nuevas.          | `createMany`     |
+| `PUT`    | `/api/v1/study-sessions`     | Actualiza una o varias sesiones existentes. | `updateManyCtrl` |
+| `DELETE` | `/api/v1/study-sessions`     | Elimina varias sesiones según `body.ids`.   | `deleteManyCtrl` |
 
 ## Parámetros admitidos (GET)
 
@@ -48,7 +48,7 @@ flowchart TD
 ### Listar sesiones recientes de una tarea
 
 ```bash
-GET /api/study-sessions?taskId=f4235e9a-f574-47ae-a102-5bd3c1106772&limit=5
+GET /api/v1/study-sessions?taskId=f4235e9a-f574-47ae-a102-5bd3c1106772&limit=5
 ```
 
 **Respuesta:**
@@ -71,7 +71,7 @@ GET /api/study-sessions?taskId=f4235e9a-f574-47ae-a102-5bd3c1106772&limit=5
 ### Crear sesión
 
 ```bash
-POST /api/study-sessions
+POST /api/v1/study-sessions
 [
   {
     "taskId": "uuid-task",

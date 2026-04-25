@@ -44,7 +44,7 @@ flowchart TD
 ### Crear sesiones de estudio
 
 ```json
-POST /api/study-sessions
+POST /api/v1/study-sessions
 [
   {
     "taskId": "f4235e9a-f574-47ae-a102-5bd3c1106772",
@@ -74,7 +74,7 @@ POST /api/study-sessions
 ### Eliminar sesiones
 
 ```json
-DELETE /api/study-sessions
+DELETE /api/v1/study-sessions
 { "ids": ["uuid-1", "uuid-2"] }
 ```
 

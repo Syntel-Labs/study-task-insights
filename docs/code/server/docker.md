@@ -1,163 +1,127 @@
-# Contenedorización del Backend
+# Docker del backend
 
-## Introducción
+## Composicion
 
-El archivo `docker.md` documenta la infraestructura de contenedores del backend de **Study Task Insights**, implementada con **Docker** y **Docker Compose**.
-Define cómo se construyen, ejecutan y coordinan los servicios que componen la aplicación: API Node.js, base de datos PostgreSQL y el servicio de modelo de lenguaje (**Ollama**).
+`server/docker-compose.yml` define cuatro servicios fijos y uno con dos variantes segun perfil. Todos viven en la red default del compose y se referencian entre si por nombre de servicio.
 
-## Descripción general
+| Servicio | Contenedor | Perfil | Imagen | Rol |
+| --- | --- | --- | --- | --- |
+| `atlas` | `sti-atlas` | `cpu`, `gpu` | `postgres:16` | PostgreSQL con esquema `sti` |
+| `hermes` | `sti-hermes` | `cpu` | `ollama/ollama:latest` | Servidor LLM en CPU |
+| `hermes-gpu` | `sti-hermes-gpu` | `gpu` | `ollama/ollama:latest` | Servidor LLM en GPU NVIDIA |
+| `prometheus` | `sti-prometheus` | `cpu`, `gpu` | `ollama/ollama:latest` | Descarga del modelo (one-shot) |
+| `apollo` | `sti-apollo` | `cpu`, `gpu` | build local (Dockerfile) | API Express + Prisma |
 
-El sistema está compuesto por tres servicios principales y un auxiliar:
+`hermes` y `hermes-gpu` heredan de un anchor YAML (`x-hermes-base`) que centraliza imagen, volumen, healthcheck y variables de Ollama. `hermes-gpu` agrega:
 
-1. **db** — Contenedor de **PostgreSQL 16** que almacena toda la información persistente de la aplicación.
-   Se inicializa automáticamente con los scripts `.psql` ubicados en `server/migrations/`, ejecutados por `00_init.sh`.
+- `aliases: [hermes]` en la red default — apollo sigue resolviendo `http://hermes:11434` sin cambiar nada.
+- `deploy.resources.reservations.devices` con `driver: nvidia` para reservar GPU.
 
-2. **api** — Contenedor de **Node.js 22** que ejecuta el backend Express con Prisma ORM.
-   Se conecta internamente a `db` y al servicio `ollama` para la generación de recomendaciones vía LLM.
-   Expone la API en el puerto `3000`.
+`prometheus` y `apollo` declaran `required: false` en `depends_on` para no quejarse del servicio del perfil inactivo.
 
-3. **ollama** — Servicio que ejecuta el motor **Ollama**, responsable de hospedar el modelo local de lenguaje (`qwen2.5:7b-instruct`).
-   Se mantiene en segundo plano y es accesible solo desde la red interna de Docker.
+## Volumenes nombrados
 
-4. **ollama-init** — Servicio auxiliar que se ejecuta una única vez al iniciar el entorno; descarga el modelo requerido y termina.
-   Garantiza que el modelo esté disponible antes de que la API se inicie.
+| Volumen | Montado en | Proposito |
+| --- | --- | --- |
+| `sti_pgdata` | `atlas:/var/lib/postgresql/data` | Datos de PostgreSQL (sobreviven `down`, no `down -v`) |
+| `sti_ollama` | `hermes:/root/.ollama` y `hermes-gpu:/root/.ollama` | Modelos de Ollama compartidos entre ambos perfiles |
 
-Los volúmenes persistentes `pgdata` y `ollama` aseguran la conservación de datos y modelos entre reinicios.
+Compartir `sti_ollama` permite descargar el modelo una vez en CPU y reutilizarlo en GPU (y viceversa). Tambien implica que **no** se debe inferir contra ambos hermes simultaneamente: el KV cache se corrompe.
 
-## Diagrama de flujo
+## Bind mounts
+
+| Origen | Destino | Servicios |
+| --- | --- | --- |
+| `./scripts` | `/scripts:ro` | `hermes`, `hermes-gpu`, `prometheus` |
+| `./migrations` | `/docker-entrypoint-initdb.d:ro` | `atlas` |
+
+Los archivos en `migrations/` se ejecutan al inicializar la base por primera vez (orden alfabetico):
+
+1. `00_setup_db.sh` — orquestador (lee `SEED_DEMO`).
+2. `01_init_schema.sql` — crea esquema `sti` y tablas.
+3. `02_seed_catalogs.sql` — siembra catalogos.
+4. `03_seed_demo.sql` — datos demo opcionales.
+
+## Healthchecks y dependencias
 
 ```mermaid
-flowchart TD
-  A[Docker Compose] --> B[db: postgres:16]
-  A --> C[api: Node.js 22]
-  A --> D[ollama: modelo LLM]
-  A --> E[ollama-init: descarga modelo]
-
-  B <---> C
-  D --> E
-  E -.-> C
-  subgraph Volúmenes Persistentes
-    F[(pgdata)]
-    G[(ollama)]
-  end
-  B --> F
-  D --> G
-  H[Host] -->|HTTP :3000| C
+flowchart LR
+  A[atlas] -->|service_healthy| D[apollo]
+  P[prometheus] -->|service_completed_successfully| D
+  H[hermes / hermes-gpu] -->|service_healthy| P
 ```
 
-**Flujo general:**
+- `atlas`: `pg_isready` cada 5s.
+- `hermes` / `hermes-gpu`: `ollama list` cada 10s con `start_period: 30s`.
+- `prometheus`: corre `ollama list` y, si falta `LLM_MODEL`, hace `ollama pull` y termina (`restart: no`).
+- `apollo`: solo arranca cuando `atlas` esta `healthy` y `prometheus` termino con exito.
 
-- `db` arranca y se inicializa con scripts SQL.
-- `ollama` inicia y es verificado por un *healthcheck*.
-- `ollama-init` descarga el modelo definido (`qwen2.5:7b-instruct`) en el volumen compartido.
-- `api` espera a que ambos servicios estén listos antes de iniciar el servidor Express.
+## Dockerfile de `apollo`
 
-## Componentes documentados
+`server/Dockerfile` usa multi-stage para mantener la imagen final ligera:
 
-### 1. `.dockerignore`
+| Stage | Base | Proposito |
+| --- | --- | --- |
+| `base` | `node:22-bookworm-slim` | `NODE_ENV=production`, habilita `corepack` |
+| `deps` | `base` | `pnpm install --frozen-lockfile` |
+| `build` | `deps` | Copia `prisma/` y corre `prisma generate` |
+| `runner` | `base` | Copia `node_modules` de `deps`, codigo de la app y `generated/` de `build`. Expone `3000` y arranca `node src/server.js` |
 
-Define los archivos que se excluyen del contexto de construcción (por ejemplo: `node_modules`, `.env`, logs y archivos temporales).
-Reduce el tamaño de las imágenes y mejora los tiempos de build.
+`pnpm` viene de `corepack`, evitando una dependencia adicional. Solo el directorio `generated/` (Prisma Client generado) viaja desde `build` al `runner`; el resto es `node_modules` ya instalado.
 
-### 2. `Dockerfile`
+## Comandos habituales
 
-Construye la imagen base del backend (`api`) en cuatro etapas:
+Desde la raiz del repo (recomendado, usa `Makefile` y scripts):
 
-1. **base**: configura Node.js 22 y habilita `corepack`.
-2. **deps**: instala dependencias con `pnpm` desde `package.json` y `pnpm-lock.yaml`.
-3. **build**: ejecuta `prisma generate` para preparar el cliente ORM.
-4. **runner**: copia el código fuente, dependencias y artefactos; expone el puerto `3000`.
+```bash
+make start                    # CPU
+./scripts/01_start.sh --gpu   # GPU
+make stop
+make logs
+make status
+```
 
-El resultado es una imagen lista para producción, ligera y reproducible.
+Directo con compose desde `server/`:
 
-### 3. `docker-compose.yml`
+```bash
+docker compose --profile cpu up -d --build --remove-orphans
+docker compose --profile gpu up -d --build --remove-orphans
+docker compose logs -f apollo
+docker compose --profile cpu down
+docker compose down -v        # ademas borra DB y modelos
+```
 
-Coordina los servicios que forman el backend completo:
+Sin `--profile`, los servicios con perfil declarado no arrancan; quedaria solo lo que tenga ambos perfiles (`atlas`, `prometheus`, `apollo`).
 
-#### **db**
+## Variables relevantes para Compose
 
-- Imagen base `postgres:16`.
-- Usa las variables del `.env` para usuario, contraseña y base de datos.
-- Ejecuta los scripts SQL iniciales desde `./migrations/`.
-- Healthcheck: espera a que la base responda correctamente antes de continuar.
+| Variable | Donde se usa |
+| --- | --- |
+| `DB_USER`, `DB_PASS`, `DB_NAME` | `atlas` (postgres init) |
+| `DB_HOST_PORT` | Puerto host expuesto por `atlas` |
+| `SEED_DEMO` | `atlas` (consumido por `00_setup_db.sh`) |
+| `OLLAMA_KEEP_ALIVE`, `OLLAMA_NUM_PARALLEL` | `hermes`, `hermes-gpu` |
+| `LLM_MODEL` | `prometheus` (decide que descargar) |
+| `OLLAMA_URL`, `LLM_*`, `ACCESS_*`, `ALLOWED_ORIGINS`, `NODE_ENV`, `APP_PORT` | `apollo` |
 
-#### **ollama**
+`apollo` usa `env_file: .env` (lee todo) y ademas pasa explicitamente algunas variables en `environment:` para fijar defaults sin tocar `.env`.
 
-- Imagen oficial `ollama/ollama:latest`.
-- Mantiene los modelos descargados en un volumen persistente `ollama`.
-- Healthcheck: verifica la disponibilidad de `ollama list`.
-- No expone puertos al host (solo accesible internamente por el backend).
+## Logging
 
-#### **ollama-init**
+Todos los servicios usan el anchor `x-logging`:
 
-- Imagen igual a `ollama/ollama`.
-- Se ejecuta una sola vez (`restart: no`).
-- Descarga el modelo definido (`qwen2.5:7b-instruct`) antes de permitir el arranque de la API.
-- Usa el mismo volumen `ollama` para compartir el modelo.
+```yaml
+driver: "json-file"
+options:
+  max-size: "10m"
+  max-file: "3"
+```
 
-#### **api**
+Asi los logs no crecen sin limite.
 
-- Construida desde el `Dockerfile` del proyecto.
-- Depende de `db` y `ollama-init`.
-- Carga variables desde `.env` (por ejemplo, `DATABASE_URL`, `OLLAMA_URL`, `LLM_MODEL`).
-- Expone el puerto `3000` al host.
-- Se reinicia automáticamente (`restart: unless-stopped`).
+## Dependencias documentales
 
-#### **volúmenes**
-
-- `pgdata` → almacenamiento persistente para la base de datos.
-- `ollama` → almacenamiento de modelos LLM.
-
-## Variables de entorno
-
-Las configuraciones se leen desde el archivo `.env`, que debe generarse a partir de `.env.example`.
-Incluyen parámetros para:
-
-- Conexión a PostgreSQL
-- Puerto y entorno del servidor Express
-- Control de autenticación (`ACCESS_TOKEN`, `ACCESS_ENABLED`)
-- Configuración del modelo LLM (`OLLAMA_URL`, `LLM_MODEL`, `LLM_TIMEOUT_MS`, `LLM_TEMPERATURE`)
-
-## Ciclo de vida de uso
-
-1. **Construcción y despliegue inicial**
-
-   ```bash
-   docker compose up -d --build
-   ```
-
-   Construye imágenes, levanta los servicios y descarga el modelo LLM si no existe.
-
-2. **Verificación de estado**
-
-   ```bash
-   docker compose ps
-   docker compose logs -f db
-   docker compose logs -f ollama
-   docker compose logs -f api
-   ```
-
-   Permite comprobar que los contenedores están activos y que el modelo fue descargado correctamente.
-
-3. **Reinicio limpio**
-
-   ```bash
-   docker compose down -v
-   docker compose up -d --build
-   ```
-
-   Elimina volúmenes (`pgdata`, `ollama`) y reinicia todo el entorno desde cero.
-
-## Consideraciones técnicas
-
-- `ollama` y `api` están en la misma red interna, permitiendo conexión por `http://ollama:11434`.
-- `ollama-init` solo corre una vez y se detiene al finalizar la descarga del modelo.
-- Los volúmenes garantizan persistencia tanto de datos (DB) como del modelo LLM.
-- Todos los comandos deben ejecutarse desde el directorio `server/`.
-
-## Dependencias internas
-
-- `server/.dockerignore` — exclusiones de contexto.
-- `server/Dockerfile` — imagen del backend Node.js.
-- `server/docker-compose.yml` — orquestación completa (DB + API + LLM).
-- `server/migrations/00_init.sh` — inicialización del esquema SQL.
+- `server/.dockerignore` — exclusiones del contexto de build.
+- `server/Dockerfile` — imagen de `apollo`.
+- `server/docker-compose.yml` — orquestacion del stack backend.
+- `server/migrations/` — scripts de inicializacion de PostgreSQL.

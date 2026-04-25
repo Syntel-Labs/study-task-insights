@@ -9,10 +9,10 @@ Sigue la convención REST estándar del backend de Study Task Insights, con oper
 
 | Método | Ruta                              | Descripción                                               | Controlador      |
 |-------:|-----------------------------------|-----------------------------------------------------------|------------------|
-| `GET`  | `/api/task-tag-assignments`       | Lista las asignaciones con filtros, paginación y includes | `getList`        |
-| `GET`  | `/api/task-tag-assignments/:id`   | Obtiene una asignación específica                         | `getOne`         |
-| `POST` | `/api/task-tag-assignments`       | Crea una o varias asignaciones nuevas                     | `createMany`     |
-| `DELETE` | `/api/task-tag-assignments`     | Elimina varias asignaciones por `body.ids`                | `deleteManyCtrl` |
+| `GET`  | `/api/v1/task-tag-assignments`       | Lista las asignaciones con filtros, paginación y includes | `getList`        |
+| `GET`  | `/api/v1/task-tag-assignments/:id`   | Obtiene una asignación específica                         | `getOne`         |
+| `POST` | `/api/v1/task-tag-assignments`       | Crea una o varias asignaciones nuevas                     | `createMany`     |
+| `DELETE` | `/api/v1/task-tag-assignments`     | Elimina varias asignaciones por `body.ids`                | `deleteManyCtrl` |
 
 ## Parámetros de consulta
 
@@ -29,7 +29,7 @@ Sigue la convención REST estándar del backend de Study Task Insights, con oper
 ### Listar asignaciones de una tarea
 
 ```bash
-GET /api/task-tag-assignments?taskId=uuid-task1&include=tag
+GET /api/v1/task-tag-assignments?taskId=uuid-task1&include=tag
 ```
 
 **Respuesta:**
@@ -46,7 +46,7 @@ GET /api/task-tag-assignments?taskId=uuid-task1&include=tag
 ### Eliminar relaciones
 
 ```bash
-DELETE /api/task-tag-assignments
+DELETE /api/v1/task-tag-assignments
 { "ids": ["uuid1", "uuid2"] }
 ```
 
@@ -64,7 +64,7 @@ DELETE /api/task-tag-assignments
 
 ```mermaid
 flowchart TD
-  A[Cliente HTTP] --> B[Express Router /api/task-tag-assignments]
+  A[Cliente HTTP] --> B[Express Router /api/v1/task-tag-assignments]
   B --> C{Método HTTP}
   C -->|GET /| D[getList]
   C -->|GET /:id| E[getOne]

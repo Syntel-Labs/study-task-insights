@@ -1,71 +1,89 @@
-# Configuración de Entorno
+# Configuracion de entorno
 
-## Introducción
+## Introduccion
 
-El archivo `.env.example` define todas las variables necesarias para ejecutar el backend de **Study Task Insights** en modo local o producción.
-Estas variables se copian a un archivo real `.env` para uso interno del contenedor y nunca deben incluirse en commits con valores sensibles.
+`.env.example` (en `server/`) define las variables necesarias para ejecutar el backend. El archivo real `.env` se obtiene copiando el ejemplo y nunca se commitea con valores reales. El compose y los scripts esperan que `.env` exista; `scripts/lib.sh` aborta el arranque si falta.
 
-## Creación del archivo `.env`
-
-Antes de levantar el entorno, crea tu `.env` basado en el ejemplo:
+## Creacion
 
 ```bash
-cp .env.example .env
+cp server/.env.example server/.env
 ```
 
-Luego edita `.env` y ajusta los valores según tu entorno (base de datos, puerto, modelo LLM, etc.).
+Luego ajustar los valores segun el entorno.
 
-## Variables de entorno
+## Variables
 
-### 1. Base de datos PostgreSQL
+### Base de datos
 
-Variables utilizadas por Prisma y Docker para la conexión a PostgreSQL.
+| Variable | Proposito |
+| --- | --- |
+| `DB_HOST` | Host de PostgreSQL. Dentro del compose es `atlas`; nativo es `localhost` |
+| `DB_PORT` | Puerto interno de PostgreSQL (`5432`) |
+| `DB_NAME` | Nombre de la base (`study_task_insights`) |
+| `DB_USER` | Usuario (`postgres` por defecto) |
+| `DB_PASS` | Contrasena |
+| `DB_SCHEMA` | Esquema dedicado (`sti`). Prisma lo usa via `DATABASE_URL?schema=sti` |
+| `DATABASE_URL` | URL completa para Prisma. Construida a partir de las anteriores |
+| `DB_HOST_PORT` | Puerto expuesto en el host (default `5433`). Usado por psql, MCP y pgAdmin desde fuera del compose |
+| `SEED_DEMO` | `true`/`false`. Si `true`, `migrations/00_setup_db.sh` ejecuta tambien `03_seed_demo.sql` en el primer arranque |
 
-| Variable       | Descripción                                                                           |
-| -------------- | ------------------------------------------------------------------------------------- |
-| `DB_HOST`      | Host o servicio Docker de la base de datos (por defecto `db`).                        |
-| `DB_PORT`      | Puerto de PostgreSQL, típicamente `5432`.                                             |
-| `DB_NAME`      | Nombre de la base de datos.                                                           |
-| `DB_USER`      | Usuario con permisos de lectura y escritura.                                          |
-| `DB_PASS`      | Contraseña del usuario configurado.                                                   |
-| `DB_SCHEMA`    | Esquema de trabajo (`public` o personalizado).                                        |
-| `DATABASE_URL` | URL completa que Prisma usa para conectar; se construye con las variables anteriores. |
+Ejemplo de `DATABASE_URL`:
 
-> Ejemplo:
-> `postgresql://user:password@db:5432/study_db?schema=public`
+```bash
+postgresql://postgres:postgres@atlas:5432/study_task_insights?schema=sti
+```
 
-### 2. Aplicación (Express)
+### Aplicacion (Express)
 
-| Variable   | Descripción                                                                             |
-| ---------- | --------------------------------------------------------------------------------------- |
-| `APP_PORT` | Puerto interno del servidor Express. Se expone al host por Docker (`3000` por defecto). |
+| Variable | Proposito |
+| --- | --- |
+| `APP_PORT` | Puerto interno del API (`3000`). Se expone al host con el mismo puerto |
+| `NODE_ENV` | `development` o `production`. Afecta logs y flags de cookie |
+| `ALLOWED_ORIGINS` | Whitelist CORS separada por coma. Sin coincidencia, la peticion es rechazada |
 
-### 3. Ambiente
+`ALLOWED_ORIGINS` para escenario local (`http://localhost:5173,http://localhost:8080`). Para Cloudflare Tunnel anade `https://sti-web.josuesay.com`.
 
-| Variable   | Descripción                                                                                                                     |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV` | Define el modo de ejecución (`development` o `production`). Afecta logs, cookies seguras, y comportamiento general del entorno. |
+### Gate de acceso
 
-### 4. Gate de acceso (autenticación mínima por cookie)
+| Variable | Proposito |
+| --- | --- |
+| `ACCESS_ENABLED` | `true`/`false`. Si `false`, el middleware `accessGate` es passthrough |
+| `ACCESS_TOKEN` | Token compartido para `POST /gate/login` y para autenticacion server-to-server via header `x-access-token` |
+| `ACCESS_SESSION_HOURS` | Duracion de la cookie `stia_session` (default `2`) |
+| `COOKIE_CROSS_SITE` | `true`/`false`. Si `true`, la cookie sale con `SameSite=None; Secure` (necesario cuando frontend y backend estan en hostnames distintos detras de Cloudflare) |
 
-| Variable               | Descripción                                                              |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `ACCESS_ENABLED`       | Activa o desactiva el middleware de autenticación (`true` o `false`).    |
-| `ACCESS_TOKEN`         | Clave privada usada para firmar sesiones y validar `/gate/login`.        |
-| `ACCESS_SESSION_HOURS` | Duración de la sesión (en horas) almacenada en la cookie `stia_session`. |
+El flujo se inicia con `POST /gate/login` enviando `{"token": "<ACCESS_TOKEN>"}`. La respuesta emite la cookie firmada `stia_session`. Las peticiones siguientes a `/api/v1/*` la envian via `withCredentials`.
 
-> El flujo se activa con `POST /gate/login` enviando `{"secret": "<ACCESS_TOKEN>"}`.
-> Genera una cookie firmada y valida automáticamente el acceso a todos los endpoints.
+### LLM (Ollama)
 
-### 5. LLM (Ollama)
+| Variable | Proposito |
+| --- | --- |
+| `OLLAMA_URL` | Endpoint interno (`http://hermes:11434` en compose; `hermes` es alias valido tambien en perfil GPU) |
+| `LLM_MODEL` | Modelo a usar; `prometheus` lo descarga si falta. Default actual del repo: `llama3.1:8b-instruct-q4_K_M` |
+| `LLM_TIMEOUT_MS` | Timeout por llamada al LLM (default `30000`) |
+| `LLM_TEMPERATURE` | Temperatura (default `0.2`) |
+| `OLLAMA_KEEP_ALIVE` | TTL del modelo cargado en VRAM/RAM, en segundos. `-1` = infinito (default) |
+| `OLLAMA_NUM_PARALLEL` | Peticiones concurrentes por modelo cargado (default `1`) |
 
-Configuración para el servicio de modelo de lenguaje embebido (`ollama`), usado por `llmService.js`.
+`OLLAMA_KEEP_ALIVE=-1` mantiene el modelo cargado entre peticiones, evitando el costo de recarga. `OLLAMA_NUM_PARALLEL=1` es prudente para una GPU domestica (subirlo causa thrashing si el modelo no cabe replicado).
 
-| Variable          | Descripción                                                                        |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| `OLLAMA_URL`      | URL interna del contenedor Ollama. En Docker siempre es `http://ollama:11434`.     |
-| `LLM_MODEL`       | Nombre del modelo a utilizar (ej. `qwen2.5:7b-instruct`).                          |
-| `LLM_TIMEOUT_MS`  | Tiempo máximo de espera en milisegundos para una respuesta del modelo.             |
-| `LLM_TEMPERATURE` | Controla la variabilidad del texto generado (0 = determinista, >0 = más creativo). |
+## Variables que el codigo lee
 
-> Todas estas variables son leídas directamente por el backend; si alguna falta, el servicio LLM lanzará error al inicializar.
+Mapa rapido de quien consume que:
+
+| Variable | Consumidor |
+| --- | --- |
+| `DATABASE_URL` | `prisma/schema.prisma` (datasource), Prisma Client |
+| `ALLOWED_ORIGINS`, `NODE_ENV` | `src/app.js` |
+| `ACCESS_ENABLED`, `ACCESS_TOKEN`, `ACCESS_SESSION_HOURS`, `COOKIE_CROSS_SITE`, `NODE_ENV` | `src/middlewares/accessGate.js`, `src/controllers/gateController.js` |
+| `OLLAMA_URL`, `LLM_MODEL`, `LLM_TIMEOUT_MS`, `LLM_TEMPERATURE` | `src/services/llmService.js` |
+| `APP_PORT` | `src/server.js` |
+
+`OLLAMA_KEEP_ALIVE` y `OLLAMA_NUM_PARALLEL` los consume el contenedor `hermes` directamente (variables de entorno de Ollama), no el codigo del backend.
+
+## Buenas practicas
+
+- No commitear `.env`. Commitear solo `.env.example` con valores neutros.
+- Cuando agregues una variable nueva, sumala en `.env.example` con un valor por defecto sensato y documentala aqui y en `server/README.md`.
+- Si el codigo requiere una variable obligatoriamente, validarla al boot (fail fast) en lugar de descubrirlo en runtime.

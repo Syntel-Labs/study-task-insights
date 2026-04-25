@@ -13,7 +13,7 @@ Permite crear `tasks`, `task_tag_assignments` y `study_sessions` de forma atómi
 
 ```mermaid
 flowchart TD
-  A[Cliente HTTP] --> B[Express Router /api/import/batch]
+  A[Cliente HTTP] --> B[Express Router /api/v1/import/batch]
   B --> C{POST /}
   C --> D[importBatchCtrl]
   D --> E[importBatchService]
@@ -24,7 +24,7 @@ flowchart TD
 
 | Método | Ruta              | Descripción                                     | Controlador     |
 | ------ | ----------------- | ----------------------------------------------- | --------------- |
-| POST   | /api/import/batch | Importa lotes de tasks, assignments y sessions. | importBatchCtrl |
+| POST   | /api/v1/import/batch | Importa lotes de tasks, assignments y sessions. | importBatchCtrl |
 
 ## Ejemplo de uso
 

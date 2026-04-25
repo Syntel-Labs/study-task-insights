@@ -20,7 +20,7 @@ El módulo expone rutas de **solo lectura** y un endpoint administrativo para re
 
 ```mermaid
 flowchart TD
-    A[Cliente HTTP] --> B[Express Router /api/weekly-productivity]
+    A[Cliente HTTP] --> B[Express Router /api/v1/weekly-productivity]
     B --> C{Método HTTP}
     C -->|GET /| D[getList]
     C -->|GET /:year/:week| E[getOne]
@@ -34,16 +34,16 @@ flowchart TD
 
 | Método | Ruta                                   | Descripción                                                                           | Controlador |
 | ------ | -------------------------------------- | ------------------------------------------------------------------------------------- | ----------- |
-| `GET`  | `/api/weekly-productivity`             | Lista los registros de productividad semanal filtrables por año, semana o rango.      | `getList`   |
-| `GET`  | `/api/weekly-productivity/:year/:week` | Obtiene un registro específico por año y semana.                                      | `getOne`    |
-| `POST` | `/api/weekly-productivity/refresh`     | Refresca la vista materializada `weekly_productivity`. Solo debe usarse por el admin. | `refresh`   |
+| `GET`  | `/api/v1/weekly-productivity`             | Lista los registros de productividad semanal filtrables por año, semana o rango.      | `getList`   |
+| `GET`  | `/api/v1/weekly-productivity/:year/:week` | Obtiene un registro específico por año y semana.                                      | `getOne`    |
+| `POST` | `/api/v1/weekly-productivity/refresh`     | Refresca la vista materializada `weekly_productivity`. Solo debe usarse por el admin. | `refresh`   |
 
 ## Ejemplo de uso (API)
 
 ### Listar productividad semanal
 
 ```bash
-GET /api/weekly-productivity?year=2026
+GET /api/v1/weekly-productivity?year=2026
 ```
 
 **Respuesta:**
@@ -72,7 +72,7 @@ GET /api/weekly-productivity?year=2026
 ### Refrescar la vista materializada
 
 ```bash
-POST /api/weekly-productivity/refresh
+POST /api/v1/weekly-productivity/refresh
 ```
 
 **Respuesta:**

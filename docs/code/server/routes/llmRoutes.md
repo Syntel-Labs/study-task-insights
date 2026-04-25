@@ -7,14 +7,14 @@ Define los endpoints REST relacionados con el LLM: recomendaciones basadas en da
 
 ## Descripción general
 
-- `GET /api/llm/recommendations` → genera recomendaciones a partir de métricas semanales.
-- `POST /api/llm/chat` → canal de chat genérico con el modelo (para usos controlados).
+- `GET /api/v1/llm/recommendations` → genera recomendaciones a partir de métricas semanales.
+- `POST /api/v1/llm/chat` → canal de chat genérico con el modelo (para usos controlados).
 
 ## Diagrama de flujo
 
 ```mermaid
 flowchart TD
-  A[Cliente HTTP] --> B[Express Router /api/llm]
+  A[Cliente HTTP] --> B[Express Router /api/v1/llm]
   B -->|GET /recommendations| C[getRecommendations]
   B -->|POST /chat| D[chatRaw]
   C & D --> E[llmController]
@@ -24,8 +24,8 @@ flowchart TD
 
 | Método | Ruta                       | Descripción                                          | Controlador          |   |
 | -----: | -------------------------- | ---------------------------------------------------- | -------------------- | - |
-|  `GET` | `/api/llm/recommendations` | Recomendaciones por semana/año con datos reales.     | `getRecommendations` |   |
-| `POST` | `/api/llm/chat`            | Chat libre controlado (formato `messages` tipo chat) | `chatRaw`            |   |
+|  `GET` | `/api/v1/llm/recommendations` | Recomendaciones por semana/año con datos reales.     | `getRecommendations` |   |
+| `POST` | `/api/v1/llm/chat`            | Chat libre controlado (formato `messages` tipo chat) | `chatRaw`            |   |
 
 ## Reglas y convenciones
 

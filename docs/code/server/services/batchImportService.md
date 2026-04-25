@@ -12,7 +12,7 @@ Controlador HTTP para la importación por lotes. Delegación directa al servicio
 
 ```mermaid
 flowchart TD
-  A[Request POST /api/import/batch] --> B[importBatchCtrl]
+  A[Request POST /api/v1/import/batch] --> B[importBatchCtrl]
   B --> C[batchImportService.importBatch]
   C --> D[Prisma / PostgreSQL]
 ```

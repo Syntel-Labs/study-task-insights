@@ -14,8 +14,8 @@ Controlador HTTP para funcionalidades LLM. Orquesta la recuperación de métrica
 ```mermaid
 flowchart TD
   A[Request HTTP] --> B{Ruta}
-  B -->|GET /api/llm/recommendations| C[getRecommendations]
-  B -->|POST /api/llm/chat| D[chatRaw]
+  B -->|GET /api/v1/llm/recommendations| C[getRecommendations]
+  B -->|POST /api/v1/llm/chat| D[chatRaw]
 
   C --> E[listWeeklyProductivity #40;service productividad#40;]
   C --> F[recommendFromWeeklyStats #40;service LLM#40;]

@@ -31,7 +31,7 @@ Gestiona las operaciones CRUD básicas, validando los cuerpos de las solicitudes
 ### Ejemplo: Crear varias asignaciones
 
 ```json
-POST /api/task-tag-assignments
+POST /api/v1/task-tag-assignments
 [
   { "taskId": "uuid-task1", "taskTagId": "uuid-tagA" },
   { "taskId": "uuid-task1", "taskTagId": "uuid-tagB" }

@@ -21,7 +21,7 @@ Cada catálogo comparte la misma estructura CRUD para mantener uniformidad y esc
 
 ```mermaid
 flowchart TD
-    A[Cliente HTTP] --> B[Express Router /api/catalogs/:entity]
+    A[Cliente HTTP] --> B[Express Router /api/v1/catalogs/:entity]
     B --> C{Método HTTP}
     C -->|GET /:entity| D[getList]
     C -->|GET /:entity/:id| E[getOne]
@@ -37,18 +37,18 @@ flowchart TD
 
 | Método   | Ruta                        | Descripción                                                        | Controlador      |
 | -------- | --------------------------- | ------------------------------------------------------------------ | ---------------- |
-| `GET`    | `/api/catalogs/:entity`     | Lista registros del catálogo con soporte de búsqueda y paginación. | `getList`        |
-| `GET`    | `/api/catalogs/:entity/:id` | Obtiene un registro específico por ID.                             | `getOne`         |
-| `POST`   | `/api/catalogs/:entity`     | Crea uno o varios registros nuevos.                                | `createMany`     |
-| `PUT`    | `/api/catalogs/:entity`     | Actualiza uno o varios registros existentes.                       | `updateManyCtrl` |
-| `DELETE` | `/api/catalogs/:entity`     | Elimina varios registros según IDs en el cuerpo.                   | `deleteManyCtrl` |
+| `GET`    | `/api/v1/catalogs/:entity`     | Lista registros del catálogo con soporte de búsqueda y paginación. | `getList`        |
+| `GET`    | `/api/v1/catalogs/:entity/:id` | Obtiene un registro específico por ID.                             | `getOne`         |
+| `POST`   | `/api/v1/catalogs/:entity`     | Crea uno o varios registros nuevos.                                | `createMany`     |
+| `PUT`    | `/api/v1/catalogs/:entity`     | Actualiza uno o varios registros existentes.                       | `updateManyCtrl` |
+| `DELETE` | `/api/v1/catalogs/:entity`     | Elimina varios registros según IDs en el cuerpo.                   | `deleteManyCtrl` |
 
 ## Ejemplo de uso (API)
 
 ### Listar catálogos de tipos de tarea
 
 ```bash
-GET /api/catalogs/task-types
+GET /api/v1/catalogs/task-types
 ```
 
 **Respuesta:**
@@ -66,7 +66,7 @@ GET /api/catalogs/task-types
 ### Crear nuevas etiquetas
 
 ```bash
-POST /api/catalogs/task-tags
+POST /api/v1/catalogs/task-tags
 Content-Type: application/json
 
 [

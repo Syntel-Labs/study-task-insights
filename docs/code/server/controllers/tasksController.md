@@ -31,7 +31,7 @@ Realiza validaciones básicas de entrada y delega la lógica de acceso a datos a
 ### Crear varias tareas
 
 ```json
-POST /api/tasks
+POST /api/v1/tasks
 [
   {
     "title": "Lectura de capítulo 3",

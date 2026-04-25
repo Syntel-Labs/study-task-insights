@@ -41,7 +41,7 @@ flowchart TD
 ### Crear varios
 
 ```json
-POST /api/catalogs/task-types
+POST /api/v1/catalogs/task-types
 [
   {"code":"exam","description":"Examen"},
   {"code":"project","description":"Proyecto"}
@@ -53,7 +53,7 @@ POST /api/catalogs/task-types
 ### Eliminar por IDs
 
 ```json
-DELETE /api/catalogs/task-tags
+DELETE /api/v1/catalogs/task-tags
 { "ids": ["uuid-1","uuid-2"] }
 ```
 

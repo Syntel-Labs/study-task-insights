@@ -43,7 +43,7 @@ app.use(requestLogger);
   "msg": "HTTP request end",
   "requestId": "c95d4b8a-8e63-4a82-b95b-4d81dbe0eec7",
   "method": "GET",
-  "url": "/api/catalogs/terms",
+  "url": "/api/v1/catalogs/terms",
   "statusCode": 200,
   "durationMs": 37
 }

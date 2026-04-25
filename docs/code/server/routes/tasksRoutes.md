@@ -3,19 +3,19 @@
 ## Introducción
 
 Define los endpoints REST para la entidad **`tasks`**, núcleo del sistema Study Task Insights.  
-Cada ruta está asociada a su controlador (`tasksController.js`) y se registra bajo `/api/tasks`.
+Cada ruta está asociada a su controlador (`tasksController.js`) y se registra bajo `/api/v1/tasks`.
 
 ## Endpoints definidos
 
 | Método   | Ruta              | Descripción                                                  | Controlador      |
 | -------- | ----------------- | ------------------------------------------------------------ | ---------------- |
-| `GET`    | `/api/tasks`      | Lista tareas filtradas y paginadas.                         | `getList`        |
-| `GET`    | `/api/tasks/:id`  | Obtiene una tarea específica por ID.                         | `getOne`         |
-| `POST`   | `/api/tasks`      | Crea una o varias tareas nuevas.                            | `createMany`     |
-| `PUT`    | `/api/tasks`      | Actualiza una o varias tareas existentes.                    | `updateManyCtrl` |
-| `DELETE` | `/api/tasks`      | Elimina varias tareas según `body.ids`.                      | `deleteManyCtrl` |
+| `GET`    | `/api/v1/tasks`      | Lista tareas filtradas y paginadas.                         | `getList`        |
+| `GET`    | `/api/v1/tasks/:id`  | Obtiene una tarea específica por ID.                         | `getOne`         |
+| `POST`   | `/api/v1/tasks`      | Crea una o varias tareas nuevas.                            | `createMany`     |
+| `PUT`    | `/api/v1/tasks`      | Actualiza una o varias tareas existentes.                    | `updateManyCtrl` |
+| `DELETE` | `/api/v1/tasks`      | Elimina varias tareas según `body.ids`.                      | `deleteManyCtrl` |
 
-## Parámetros de consulta (GET /api/tasks)
+## Parámetros de consulta (GET /api/v1/tasks)
 
 - **Filtros:**  
   `statusId`, `priorityId`, `typeId`, `termId`, `tagId`, `q`, `dueFrom`, `dueTo`, `archived` (`true|false`)
@@ -31,13 +31,13 @@ Cada ruta está asociada a su controlador (`tasksController.js`) y se registra b
 ### Listar tareas con etiquetas incluidas
 
 ```bash
-GET /api/tasks?include=all&limit=10
+GET /api/v1/tasks?include=all&limit=10
 ```
 
 ### Eliminar tareas por IDs
 
 ```bash
-DELETE /api/tasks
+DELETE /api/v1/tasks
 { "ids": ["uuid1", "uuid2"] }
 ```
 
@@ -51,7 +51,7 @@ DELETE /api/tasks
 
 ```mermaid
 flowchart TD
-  A[Cliente HTTP] --> B[Express Router /api/tasks]
+  A[Cliente HTTP] --> B[Express Router /api/v1/tasks]
   B --> C{Método HTTP}
   C -->|GET /| D[getList]
   C -->|GET /:id| E[getOne]

@@ -38,7 +38,7 @@ flowchart TD
 ### Consultar productividad semanal por año y semana
 
 ```bash
-GET /api/weekly-productivity/2026/3
+GET /api/v1/weekly-productivity/2026/3
 ```
 
 **200 OK:**
