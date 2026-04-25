@@ -41,7 +41,7 @@ cp .env.example .env
 `utils/config.js` valida estas variables con `requireEnv` al cargar el bundle: cualquier ausencia detiene el arranque con un error claro en la consola del navegador.
 
 > `VITE_API_BASE_PATH` debe coincidir con el prefijo real del backend (`/api/v1`). Usar `/api` sin version rompe todas las llamadas.
-
+>
 > Como se inyectan en build, cualquier cambio obliga a reconstruir: `docker compose up -d --build`.
 
 ## Escenarios de despliegue

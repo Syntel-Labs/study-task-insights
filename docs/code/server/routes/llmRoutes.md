@@ -1,4 +1,3 @@
-
 # Rutas: LLM (`llmRoutes.js`)
 
 ## Introducción

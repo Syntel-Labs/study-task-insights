@@ -6,13 +6,13 @@ Define la **interfaz HTTP pública** del backend: paths, métodos y montaje en `
 
 ## Contenido
 
-* **tasksRoutes.md**: `/api/v1/tasks`
-* **taskTagAssignmentsRoutes.md**: `/api/v1/task-tag-assignments`
-* **studySessionsRoutes.md**: `/api/v1/study-sessions`
-* **weeklyProductivityRoutes.md**: `/api/v1/weekly-productivity`
-* **catalogsRoutes.md**: `/api/v1/catalogs/*`
-* **batchImportRoutes.md**: `/api/v1/import/batch`
-* **llmRoutes.md**: `/api/v1/llm`
+- **tasksRoutes.md**: `/api/v1/tasks`
+- **taskTagAssignmentsRoutes.md**: `/api/v1/task-tag-assignments`
+- **studySessionsRoutes.md**: `/api/v1/study-sessions`
+- **weeklyProductivityRoutes.md**: `/api/v1/weekly-productivity`
+- **catalogsRoutes.md**: `/api/v1/catalogs/*`
+- **batchImportRoutes.md**: `/api/v1/import/batch`
+- **llmRoutes.md**: `/api/v1/llm`
 
 Ademas, el gate vive aparte (no bajo `/api/v1`):
 

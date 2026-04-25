@@ -1,14 +1,13 @@
-
 # Service: studySessionsService.js
 
 ## Introducción
 
-Servicio de datos para la entidad **`study_sessions`**, encargado de administrar la persistencia y validaciones de sesiones de estudio.  
+Servicio de datos para la entidad **`study_sessions`**, encargado de administrar la persistencia y validaciones de sesiones de estudio.
 Implementa las operaciones CRUD con **Prisma ORM**, validando coherencia temporal (`startedAt <= endedAt`) y relaciones (`taskId` válido).
 
 ## Descripción general
 
-Cada sesión representa un bloque de tiempo invertido en una tarea específica.  
+Cada sesión representa un bloque de tiempo invertido en una tarea específica.
 El campo `durationMinutes` se genera automáticamente por PostgreSQL y se refleja en Prisma mediante `@default(dbgenerated())`.
 
 ## Diagrama de flujo

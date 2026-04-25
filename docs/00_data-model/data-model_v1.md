@@ -223,57 +223,57 @@ Esta **materialized view** consolida automáticamente resúmenes semanales de de
 > **Objetivo:** acelerar filtros típicos del checklist, calendarios y agregaciones, además de garantizar unicidad donde corresponde.
 
 - **`tasks(task_status_id)`**
-  
+
   **Por qué:** vistas del checklist por estado son frecuentes (pendientes, en progreso, completadas).
-  
+
   **Beneficio:** filtra rápido por estado actual sin escanear toda la tabla.
 
 - **`tasks(task_priority_id)`**
-  
+
   **Por qué:** ordenar/filtrar por prioridad para decidir foco del día.
-  
+
   **Beneficio:** permite “top tareas urgentes” eficiente.
 
 - **`tasks(due_at)`**
-  
+
   **Por qué:** calendarios y recordatorios se basan en deadlines.
-  
+
   **Beneficio:** rangos por fecha (semana/mes) más rápidos.
 
 - **`tasks(term_id, due_at)`**
-  
+
   **Por qué:** consultas históricas por **semestre** y ventana temporal (ej. “S1 2025, próximos vencimientos”).
-  
+
   **Beneficio:** combinación de filtro por término + orden cronológico.
 
 - **`tasks(term_id, lower(btrim(title)), due_at)` (UNIQUE parcial)**
-  
+
   **Por qué:** evita duplicados activos con fecha definida.
-  
+
   **Beneficio:** garantiza integridad sin bloquear históricos archivados.
 
 - **`tasks(term_id, lower(btrim(title)))` (UNIQUE parcial)**
-  
+
   **Por qué:** evita duplicados activos sin fecha límite (`due_at` nulo).
-  
+
   **Beneficio:** asegura consistencia también en tareas sin deadline.
 
 - **`task_tag_assignments(task_id, task_tag_id)` (UNIQUE)**
-  
+
   **Por qué:** evitar duplicar etiquetas en una tarea y acelerar búsquedas por combinación.
-  
+
   **Beneficio:** integridad y joins N:M más eficientes.
 
 - **`study_sessions(task_id, started_at)`**
-  
+
   **Por qué:** obtener el historial de tiempo por tarea en orden temporal.
-  
+
   **Beneficio:** cargas para gráficos/series de tiempo sin “filesort”.
 
 - **`weekly_productivity(iso_year, iso_week)` (UNIQUE)**
-  
+
   **Por qué:** acceso directo a la semana solicitada y garantía de un registro por semana.
-  
+
   **Beneficio:** reportes semanales y agregaciones consistentes.
 
 ## 4. Diseño
