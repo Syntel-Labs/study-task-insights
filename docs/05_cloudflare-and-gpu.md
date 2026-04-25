@@ -1,45 +1,37 @@
 # Cloudflare Tunnel y perfiles GPU/CPU
 
-Guia de los dos patrones que conviven en el stack de STI: tunel publico
-por proyecto (sin pisar a otros) y perfiles `cpu`/`gpu` para el contenedor
-Ollama.
+Documenta los dos patrones que conviven en el stack de STI: tunel publico aislado por proyecto y perfiles `cpu`/`gpu` para el contenedor Ollama.
 
 ## Cloudflare Tunnel aislado por proyecto
 
 ### El problema
 
-`cloudflared` lee por defecto `~/.cloudflared/config.yml`. Si mas de un
-proyecto en la misma maquina intenta usar ese archivo, el segundo sobrescribe
-la config del primero y rompe su tunel.
+`cloudflared` lee por defecto `~/.cloudflared/config.yml`. Si dos proyectos en la misma maquina quieren escribir ahi, el segundo pisa la config del primero y rompe su tunel.
 
-Ejemplo real: el repo `lead-flow-ai` tiene su tunel `leadflow-dev`
-configurado en `~/.cloudflared/config.yml`. Si otro script escribe ahi, el
-tunel de lead-flow deja de funcionar.
+Ejemplo real: el repo `lead-flow-ai` ya tiene su tunel `leadflow-dev` configurado en `~/.cloudflared/config.yml`. Si otro script escribiera en ese archivo, ese tunel deja de funcionar.
 
-### Nuestra solucion
+### La solucion en este repo
 
 Cada proyecto tiene:
 
-- Un nombre de tunel unico (`sti-dev` en este repo).
-- Un archivo propio `~/.cloudflared/config-<tunnel-name>.yml`.
-- Scripts que se invocan siempre con `cloudflared tunnel --config <file>`
-  en vez de depender del `config.yml` por defecto.
+- Un nombre de tunel unico (`sti-dev` aqui).
+- Un archivo propio `~/.cloudflared/<tunnel-name>.yml` (sin prefijo `config-`, naming directo por nombre del tunel).
+- Scripts que invocan siempre `cloudflared tunnel --config <file>` en vez de depender del `config.yml` por defecto.
 
-Resultado: `leadflow-dev` (archivo por defecto) y `sti-dev` (archivo con
-sufijo) pueden correr en paralelo sin conflicto.
+Resultado: `leadflow-dev` (en `config.yml` por defecto) y `sti-dev` (en `sti-dev.yml`) pueden correr en paralelo sin conflicto.
 
 ### Estructura de archivos
 
 ```bash
 ~/.cloudflared/
-  cert.pem                    # certificado de autenticacion (compartido)
+  cert.pem                    # certificado de autenticacion (compartido entre tuneles)
   config.yml                  # tunel del proyecto X (no tocar)
-  config-sti-dev.yml          # tunel de STI (este repo)
+  sti-dev.yml                 # tunel de STI (este repo)
   <uuid-sti>.json             # credenciales del tunel STI
   <uuid-otro>.json            # credenciales de otros proyectos
 ```
 
-Ejemplo de `config-sti-dev.yml` que genera `08_tunnel_init.sh`:
+Ejemplo de `sti-dev.yml` que genera `08_tunnel_init.sh`:
 
 ```yaml
 tunnel: sti-dev
@@ -59,65 +51,104 @@ ingress:
   - service: http_status:404
 ```
 
-### Scripts
+### Doble interfaz: scripts + Makefile
 
-- `scripts/08_tunnel_init.sh`: bootstrap idempotente del tunel STI. Instala
-  `cloudflared`, autentica (abre navegador), crea el tunel, registra DNS y
-  escribe el config propio. Jamas toca `config.yml`.
-- `scripts/09_tunnel_up.sh`: levanta el tunel con
-  `cloudflared tunnel --config ~/.cloudflared/config-sti-dev.yml run`.
-- `scripts/10_dns_check.sh`: diagnostica NS, CNAME, resolucion local y
-  HTTP publico.
+Cada operacion existe como script (logica) y como target de `Makefile` (atajo). Los targets solo delegan, no agregan logica.
 
-### Guarda de seguridad
+| Operacion | Script | Make target |
+| --- | --- | --- |
+| Bootstrap del tunel | `scripts/08_tunnel_init.sh` | `make tunnel-init` |
+| Levantar el tunel | `scripts/09_tunnel_up.sh` | `make tunnel-up` |
+| Diagnostico DNS y HTTP | `scripts/10_dns_check.sh` | `make dns-check` |
+| Verificar setup completo | `scripts/cloudflare_verify.sh` | `make cf-verify` |
+| Desmontar tunel + DNS + config | `scripts/tunnel_down.sh` | `make tunnel-down` |
 
-`scripts/lib.sh` expone `assert_cf_config_safe` que aborta si alguna
-ruta termina en `config.yml` o `config.yaml`. Los scripts 08 y 09 la
-invocan antes de leer/escribir. Asi es imposible romper el archivo
-compartido por un typo.
+### Bootstrap: que hace `tunnel-init`
 
-### Como correr los dos tuneles en paralelo
+`08_tunnel_init.sh` es idempotente. En orden:
 
-Terminal A (proyecto vecino, con `config.yml` por defecto):
+1. Instala `cloudflared` si falta (en WSL/Debian usa el repo apt oficial).
+2. Si no hay `cert.pem`, ejecuta `cloudflared tunnel login` y abre el navegador para autorizar el dominio.
+3. Si el tunel `sti-dev` no existe, lo crea con `cloudflared tunnel create sti-dev`.
+4. Parsea el UUID del tunel con `cloudflared tunnel list | awk '$2 == "sti-dev" { print $1 }'` (no captura toda la salida del create, que es fragil).
+5. Escribe `~/.cloudflared/sti-dev.yml` con el ingress de los dos hostnames.
+6. Registra DNS con `cloudflared tunnel route dns sti-dev <hostname> --overwrite-dns` para que la rerunada no falle si el registro ya existia.
+7. Valida con `cloudflared tunnel --config ~/.cloudflared/sti-dev.yml ingress validate`.
+
+Jamas escribe en `~/.cloudflared/config.yml`.
+
+### Guarda anti-pisada
+
+`scripts/lib.sh` expone `assert_cf_config_safe` que aborta si alguna ruta termina en `config.yml` o `config.yaml`, normalizando el path antes (expande `~`, resuelve relativos, colapsa `//`). Asi no se puede bypassear con `./config.yml` ni `~/.cloudflared//config.yml`. Los scripts 08, 09 y `tunnel_down` la invocan antes de leer/escribir.
+
+### Que valida `cf-verify`
+
+`scripts/cloudflare_verify.sh` corre seis chequeos en orden y devuelve exit code igual al numero de fallos:
+
+1. `cloudflared` instalado.
+2. `cert.pem` presente en `~/.cloudflared/`.
+3. Tunel `sti-dev` existe en Cloudflare (`cloudflared tunnel list`).
+4. Config per-proyecto presente (`~/.cloudflared/sti-dev.yml`).
+5. Ingress YAML valida (`cloudflared tunnel --config ... ingress validate`).
+6. Rutas DNS resueltas para cada hostname. Acepta dos formas:
+   - CNAME a `*.cfargotunnel.com` (DNS only).
+   - Registro A en rangos de Cloudflare anycast (104., 172., 162., 173.) cuando el proxy naranja esta activo.
+
+### Correr dos tuneles en paralelo
+
+Terminal A (proyecto vecino, con `~/.cloudflared/config.yml` por defecto):
 
 ```bash
 cloudflared tunnel run
-# o el script del otro proyecto: make tunnel-up
+# o el script del otro proyecto
 ```
 
 Terminal B (STI):
 
 ```bash
-./scripts/09_tunnel_up.sh
-# o manual: cloudflared tunnel --config ~/.cloudflared/config-sti-dev.yml run
+make tunnel-up
+# = cloudflared tunnel --config ~/.cloudflared/sti-dev.yml run
 ```
 
 Cada proceso sirve hostnames distintos y no compiten.
 
-### Lecciones que llevar a otros proyectos
+### Desmontar el setup
 
-Si tu script genera un tunel:
+`make tunnel-down` (`scripts/tunnel_down.sh`) pide confirmacion y luego:
 
-1. Nunca escribas a `~/.cloudflared/config.yml`. Usa
-   `~/.cloudflared/config-<tunnel-name>.yml` y ejecuta con `--config`.
-2. Parsea el UUID correctamente. Usa
-   `cloudflared tunnel list | awk '$2 == "<name>" { print $1 }'` en vez
-   de capturar toda la salida de `cloudflared tunnel create`.
-3. Haz `cloudflared ingress validate --config <file>` tras escribir el
-   archivo para detectar errores de sintaxis temprano.
+1. Borra los registros DNS asociados al tunel.
+2. Elimina el tunel en Cloudflare.
+3. Borra `~/.cloudflared/sti-dev.yml` y el `<uuid>.json` correspondiente.
+
+`cert.pem` queda intacto porque otros tuneles del mismo dominio lo necesitan.
+
+### Cookies cross-site (cuando hay dos hostnames)
+
+Cuando el frontend va a `https://sti-web.josuesay.com` y el backend a `https://sti-api.josuesay.com`, el navegador trata la peticion como cross-site. Para que la cookie del gate (`stia_session`) se envie:
+
+- Backend: `COOKIE_CROSS_SITE=true` para que Express emita `SameSite=None; Secure`.
+- Backend: `app.set("trust proxy", 1)` en `app.js` para que respete `X-Forwarded-Proto: https` y considere la conexion como segura.
+- Backend: `ALLOWED_ORIGINS` debe incluir el origen exacto del frontend publico.
+- Frontend: `VITE_BACKEND_BASE_URL=https://sti-api.josuesay.com`, y la SPA llama al API con `credentials: "include"` (ya configurado en `lib/`).
+
+Sin estos tres, el login pasa pero la siguiente peticion sale sin cookie y el gate la rechaza.
+
+### Lecciones reutilizables
+
+Si tu script genera un tunel propio:
+
+1. Nunca escribas a `~/.cloudflared/config.yml`. Usa `~/.cloudflared/<tunnel-name>.yml` y ejecuta con `--config`.
+2. Parsea el UUID con `cloudflared tunnel list | awk '$2 == "<name>" { print $1 }'`. Capturar la salida de `create` se rompe entre versiones.
+3. Registra DNS con `--overwrite-dns` para que la segunda ejecucion no falle.
+4. Valida con `cloudflared tunnel --config <file> ingress validate` antes de levantar.
 
 ## Perfiles CPU y GPU para Ollama
 
 ### Por que dos perfiles
 
-El contenedor `sti-hermes` (Ollama) corre por defecto en CPU. Si la maquina
-tiene GPU NVIDIA, queremos poder cambiarlo a GPU sin modificar el compose
-en disco (para no ensuciar el repo con config local).
+`sti-hermes` (Ollama) corre en CPU por defecto. Si la maquina tiene GPU NVIDIA, queremos cambiarlo a GPU sin tocar el compose en disco. La solucion estandar son los **profiles** de Compose: un servicio solo arranca cuando su perfil esta activo.
 
-La solucion estandar en Compose son los **profiles**: un servicio solo
-arranca cuando su perfil esta activo.
-
-### Estructura
+### Estructura del compose
 
 `server/docker-compose.yml`:
 
@@ -156,14 +187,9 @@ services:
 
 Puntos clave:
 
-- **Mismo volumen** `sti_ollama`: los modelos descargados persisten entre
-  cambios de perfil. Descargar `qwen2.5:7b-instruct` una vez en CPU y
-  sigue disponible al pasar a GPU.
-- **Alias de red `hermes`**: `sti-hermes-gpu` responde al hostname
-  `hermes` dentro de la red Docker. `apollo` mantiene
-  `OLLAMA_URL=http://hermes:11434` en ambos modos.
-- **`required: false`** en `depends_on` de `prometheus` y `apollo`:
-  Compose no se queja del servicio del perfil inactivo.
+- **Mismo volumen `sti_ollama`**: los modelos descargados persisten entre cambios de perfil. Descargar `llama3.1:8b-instruct-q4_K_M` una vez en CPU y sigue disponible al pasar a GPU.
+- **Alias de red `hermes`**: `sti-hermes-gpu` responde al hostname `hermes` dentro de la red Docker. `apollo` mantiene `OLLAMA_URL=http://hermes:11434` en ambos modos.
+- **`required: false`** en `depends_on` de `prometheus` y `apollo`: Compose no se queja del servicio del perfil inactivo.
 
 ### Flag del script
 
@@ -173,26 +199,18 @@ Puntos clave:
 ./scripts/01_start.sh server --gpu # solo backend en GPU
 ```
 
-El script primero hace `down` de ambos perfiles (por si quedara
-`sti-hermes` corriendo al pedir GPU o viceversa) y luego `up` del perfil
-elegido.
+`01_start.sh` primero hace `down` de ambos perfiles (por si quedara `sti-hermes` corriendo al pedir GPU o viceversa) y luego `up` del perfil elegido.
 
 ### Regla de uso importante
 
-Los contenedores `sti-hermes` y `sti-hermes-gpu` **pueden coexistir
-levantados** (nadie impide levantar manualmente ambos), pero no hagas
-inferencia contra los dos a la vez: comparten el directorio de modelos
-(`/root/.ollama`) y escrituras concurrentes al KV cache corrompen el
-estado del modelo cargado. En uso normal el script `01_start.sh` siempre
-baja la variante contraria antes de levantar la pedida, asi que no
-deberia ocurrir.
+`sti-hermes` y `sti-hermes-gpu` **pueden coexistir** levantados (nadie impide levantar manualmente ambos), pero **no hagas inferencia contra los dos a la vez**: comparten `/root/.ollama` y las escrituras concurrentes al KV cache corrompen el estado del modelo cargado. En uso normal `01_start.sh` siempre baja la variante contraria antes de levantar la pedida, asi que no deberia ocurrir.
 
 ### Requisitos del host para el perfil GPU
 
-- Driver NVIDIA (en Windows+WSL2: driver Windows, no linux)
-- `nvidia-container-toolkit` en la distro WSL
-- Docker con runtime `nvidia` registrado (aparece en `docker info`)
-- Docker Compose >= 2.3 (para `deploy.resources.reservations.devices`)
+- Driver NVIDIA (en Windows+WSL2: driver Windows, no linux).
+- `nvidia-container-toolkit` en la distro WSL.
+- Docker con runtime `nvidia` registrado (aparece en `docker info`).
+- Docker Compose >= 2.3 (para `deploy.resources.reservations.devices`).
 
 Verificacion rapida:
 
